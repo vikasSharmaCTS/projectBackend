@@ -1,0 +1,130 @@
+[
+  {
+    "doctorId": 1,
+    "name": "Dr. VIKAS",
+    "specialty": "Psychiatry",
+    "availableSlots": {
+      "2025-07-09": [
+        {
+          "startTime": "10:00",
+          "endTime": "12:00"
+        },
+        {
+          "startTime": "11:00",
+          "endTime": "12:00"
+        },
+        {
+          "startTime": "14:00",
+          "endTime": "18:00"
+        }
+      ],
+      "2025-07-11": [
+        {
+          "startTime": "09:00",
+          "endTime": "11:00"
+        }
+      ],
+      "2025-08-09": [
+        {
+          "startTime": "11:00",
+          "endTime": "12:00"
+        },
+        {
+          "startTime": "14:00",
+          "endTime": "18:00"
+        }
+      ],
+      "2025-10-10": [
+        {
+          "startTime": "11:00",
+          "endTime": "12:00"
+        },
+        {
+          "startTime": "14:00",
+          "endTime": "18:00"
+        },
+        {
+          "startTime": "11:00",
+          "endTime": "13:00"
+        },
+        {
+          "startTime": "15:00",
+          "endTime": "17:00"
+        }
+      ],
+      "2025-10-20": [
+        {
+          "startTime": "05:00",
+          "endTime": "06:00"
+        }
+      ],
+      "2025-10-25": [
+        {
+          "startTime": "10:00",
+          "endTime": "10:30"
+        }
+      ]
+    }
+  },
+  {
+    "doctorId": 2,
+    "name": "Dr. B. Mehta",
+    "specialty": "Neurology",
+    "availableSlots": {
+      "2025-07-09": [
+        {
+          "startTime": "11:00",
+          "endTime": "12:00"
+        }
+      ],
+      "2025-07-10": [
+        {
+          "startTime": "11:00",
+          "endTime": "13:00"
+        },
+        {
+          "startTime": "13:30",
+          "endTime": "14:00"
+        }
+      ]
+    }
+  },
+  {
+    "doctorId": 3,
+    "name": "Dr. Sohith",
+    "specialty": "Dermatology",
+    "availableSlots": {
+      "2025-07-11": [
+        {
+          "startTime": "09:00",
+          "endTime": "11:00",
+          "isBooked": false
+        }
+      ],
+      "2025-07-09": [
+        {
+          "startTime": "11:00",
+          "endTime": "12:00",
+          "isBooked": false
+        },
+        {
+          "startTime": "14:00",
+          "endTime": "18:00",
+          "isBooked": false
+        }
+      ],
+      "2025-08-09": [
+        {
+          "startTime": "11:00",
+          "endTime": "12:00",
+          "isBooked": false
+        },
+        {
+          "startTime": "14:00",
+          "endTime": "18:00",
+          "isBooked": false
+        }
+      ]
+    }
+  }
+]

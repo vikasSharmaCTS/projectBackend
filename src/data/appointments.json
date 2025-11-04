@@ -1,0 +1,93 @@
+[
+  {
+    "appointmentId": 1,
+    "patientId": 101,
+    "doctorId": 1,
+    "date": "2025-07-09",
+    "startTime": "10:00",
+    "endTime": "12:00",
+    "status": "confirmed"
+  },
+  {
+    "appointmentId": 2,
+    "patientId": 102,
+    "doctorId": 1,
+    "date": "2025-07-09",
+    "startTime": "10:00",
+    "endTime": "12:00",
+    "status": "cancelled"
+  },
+  {
+    "appointmentId": 3,
+    "patientId": 103,
+    "doctorId": 2,
+    "date": "2025-07-09",
+    "startTime": "11:00",
+    "endTime": "12:00",
+    "status": "confirmed"
+  },
+  {
+    "appointmentId": 5,
+    "patientId": 105,
+    "doctorId": 1,
+    "date": "2025-10-20",
+    "startTime": "03:00",
+    "endTime": "04:00",
+    "status": "completed",
+    "consultationId": "CONS001"
+  },
+  {
+    "appointmentId": 6,
+    "patientId": 106,
+    "doctorId": 1,
+    "date": "2025-07-11",
+    "startTime": "09:00",
+    "endTime": "11:00",
+    "status": "confirmed"
+  },
+  {
+    "appointmentId": 7,
+    "patientId": 101,
+    "doctorId": 1,
+    "date": "2025-07-11",
+    "startTime": "09:00",
+    "endTime": "11:00",
+    "status": "confirmed"
+  },
+  {
+    "appointmentId": 9,
+    "patientId": 101,
+    "doctorId": 1,
+    "date": "2025-08-09",
+    "startTime": "14:00",
+    "endTime": "18:00",
+    "status": "confirmed"
+  },
+  {
+    "appointmentId": 11,
+    "patientId": 102,
+    "doctorId": 1,
+    "date": "2025-10-10",
+    "startTime": "15:00",
+    "endTime": "17:00",
+    "status": "confirmed"
+  },
+  {
+    "appointmentId": 12,
+    "patientId": 103,
+    "doctorId": 2,
+    "date": "2025-10-25",
+    "startTime": "10:00",
+    "endTime": "10:30",
+    "status": "confirmed"
+  },
+  {
+    "appointmentId": 10,
+    "patientId": 104,
+    "doctorId": 1,
+    "date": "2025-10-20",
+    "startTime": "05:00",
+    "endTime": "06:00",
+    "status": "confirmed"
+  }
+]

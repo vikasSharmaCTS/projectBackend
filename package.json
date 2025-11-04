@@ -1,0 +1,31 @@
+{
+  "name": "bookingapi",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha",
+    "start": "node --watch server.js",
+    "coverage": "nyc npm test",
+    "dev": "nodemon server.js"
+  },
+  "devDependencies": {
+    "chai": "^6.2.0",
+    "mocha": "^11.7.4",
+    "nodemon": "^3.1.10",
+    "nyc": "^17.1.0",
+    "supertest": "^7.1.4"
+  },
+  "dependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.9.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-validator": "^7.2.1",
+    "mongoose": "^8.19.2",
+    "uuid": "^13.0.0"
+  }
+}

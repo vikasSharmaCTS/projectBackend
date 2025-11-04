@@ -1,0 +1,8 @@
+[
+  { "patientId": 101, "name": "Rohith Pradeep" },
+  { "patientId": 102, "name": "Ishan" },
+  { "patientId": 103, "name": "Kashinath S" },
+  { "patientId": 104, "name": "Peter Parker" },
+  { "patientId": 105, "name": "Steve Rogers" },
+  { "patientId": 106, "name": "Tony Stark" }
+]
