@@ -4,7 +4,8 @@ const {
   getFilteredDoctors,
   updateDoctor,
   createTimeSlot,
-  deleteTimeSlot
+  deleteTimeSlot,
+  getTimeSlot
 } = require('../controllers/docController');
 const validateRequest = require('../middleware/validateRequest');
 
@@ -14,10 +15,8 @@ const  {deleteSlotSchema, createSlotSchema}  = require('../validators/timeSlotVa
 router.get('/', getFilteredDoctors); 
 router.put('/:id', validateUpdateDoctor, updateDoctor);
 router.put('/createSlot/:doctorId',createSlotSchema,validateRequest, createTimeSlot);
-// router.put('/createSlot/:doctorId', createTimeSlot);
-router.delete('/deleteSlot/:doctorId',deleteSlotSchema,validateRequest, deleteTimeSlot);
-// router.delete('/deleteSlot/:doctorId',deleteTimeSlot);
-
+router.put('/deleteSlot/:doctorId',deleteSlotSchema,validateRequest, deleteTimeSlot);
+router.get('/getSlots/:doctorId', getTimeSlot);
 
 
 module.exports = router;

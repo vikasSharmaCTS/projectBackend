@@ -289,9 +289,41 @@ const deleteTimeSlot = async (req, res) => {
   }
 };
 
+
+const getTimeSlot = async (req, res) => {
+  try {
+    const doctorId = req.params.doctorId;
+
+    // Find doctor by ID
+    const doctor = await Doctor.findById(doctorId).select("calendar name specialty");
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    // Flatten all available slots into a single array
+    const slots = doctor.calendar.flatMap(entry =>
+      entry.availableSlots.map(slot => ({
+        date: entry.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        isBooked: slot.isBooked
+      }))
+    );
+
+    return res.status(200).json({
+      slots
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
 module.exports = {
   getFilteredDoctors,
   updateDoctor,
   createTimeSlot,
   deleteTimeSlot,
+  getTimeSlot
 };

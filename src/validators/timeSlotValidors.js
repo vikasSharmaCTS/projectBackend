@@ -188,14 +188,14 @@ const deleteSlotSchema = checkSchema({
   date: {
     in: ['body'],
     notEmpty: { errorMessage: 'Date is required' },
-    custom: {
-      options: value => {
-        if (!isValidISODate(value)) {
-          throw new Error('Date must be in YYYY-MM-DD format');
-        }
-        return true;
-      }
-    }
+    // custom: {
+    //   options: value => {
+    //     if (!isValidISODateTime(value)) {
+    //       throw new Error('Date must be in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)');
+    //     }
+    //     return true;
+    //   }
+    // }
   },
 
   startTime: {
