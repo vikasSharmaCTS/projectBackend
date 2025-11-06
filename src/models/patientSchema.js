@@ -31,7 +31,11 @@
       type: String,
       required: true,
       match: [/^\d{10}$/, 'Phone number must be 10 digits'] 
-    }
+    },
+    credentials: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Credentials',
+  }
   }, { timestamps: true });
 
   module.exports = mongoose.model('Patient', patientSchema);

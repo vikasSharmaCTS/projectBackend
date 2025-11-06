@@ -9,19 +9,19 @@ const bookingSchema = checkSchema({
     isString: { errorMessage: 'Specialty must be a string' }
   },
 
-  id: {
+  doctorId: {
     in: ['params'],
     notEmpty: { errorMessage: 'ID is required' },
-    isInt: { errorMessage: 'ID must be a number' },
-    toInt: true
+    // isInt: { errorMessage: 'ID must be a number' },
+    // toInt: true
   },
 
 
   patientId: {
     in: ['body'],
     notEmpty: { errorMessage: 'Patient ID is required' },
-    isInt: { options: { min: 1 }, errorMessage: 'Patient ID must be a positive integer' },
-    toInt: true
+    // isInt: { options: { min: 1 }, errorMessage: 'Patient ID must be a positive integer' },
+    // toInt: true
   },
 
   date: {

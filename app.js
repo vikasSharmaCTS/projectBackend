@@ -49,6 +49,9 @@ const doctorRoutes = require("./src/routes/doctorRoute");
 const appointmentRoutes = require("./src/routes/appointmentRoute");
 const consultationRouter = require("./src/routes/consultationRoutes");
 const editAppRoutes = require("./src/routes/editAppRoutes")
+const passport = require("./src/config/passport");
+const authRoutes = require("./src/routes/authRoutes");
+const patientRoutes = require("./src/routes/patient");
 const cors = require("cors");
 const connectDB = require("./src/config/db.config");
 
@@ -57,6 +60,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(logger);
 app.use(headerSet);
+app.use(passport.initialize());
 connectDB();
 
 app.use(cors({
@@ -72,6 +76,9 @@ app.use("/doctors", doctorRoutes);
 app.use("/appointments", appointmentRoutes);
 app.use("/consultations", consultationRouter);
 app.use("/", editAppRoutes);
+app.use("/auth", authRoutes);
+app.use("/patient", patientRoutes);
+
 
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 app.use(errorHandler);

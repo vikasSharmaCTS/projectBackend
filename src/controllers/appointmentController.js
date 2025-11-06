@@ -8,9 +8,9 @@ const bookAppointment = async (req, res) => {
   try {
     console.log('Booking appointment with data:', req.body);
 
-    const { doctorId, date, startTime, endTime } = req.body;
+    const { doctorId, patientId, date, startTime, endTime } = req.body;
 
-    const patientId = "690b42a7e62b149a1e02a29a";
+    //const patientId = "690b42a7e62b149a1e02a29a";
 
     
     if (!mongoose.Types.ObjectId.isValid(doctorId) || !mongoose.Types.ObjectId.isValid(patientId)) {
@@ -34,12 +34,19 @@ const bookAppointment = async (req, res) => {
       return res.status(404).json({ message: 'No slots available on this date' });
     }
 
-    const slot = calendarEntry.availableSlots.find(
-      s =>
-        s.startTime.getTime() === new Date(startTime).getTime() &&
-        s.endTime.getTime() === new Date(endTime).getTime() &&
-        !s.isBooked
-    );
+    // const slot = calendarEntry.availableSlots.find(
+    //   s =>
+    //     s.startTime.getTime() === new Date(startTime).getTime() &&
+    //     s.endTime.getTime() === new Date(endTime).getTime() &&
+    //     !s.isBooked
+    // );
+    const slot = calendarEntry.availableSlots.find(s => {
+  const slotStart = s.startTime.toISOString().slice(11, 16); // HH:mm
+  const slotEnd = s.endTime.toISOString().slice(11, 16);
+  const reqStart = new Date(startTime).toISOString().slice(11, 16);
+  const reqEnd = new Date(endTime).toISOString().slice(11, 16);
+  return slotStart === reqStart && slotEnd === reqEnd && !s.isBooked;
+});
     if (!slot) {
       return res.status(400).json({ message: 'Requested slot is not available' });
     }
