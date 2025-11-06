@@ -55,15 +55,150 @@ const updateDoctor = async (req, res) => {
 };
 
 
+const createTimeSlot = async (req, res) => {
+  try {
+    const doctorId = req.query.doctorId;
+    const action = req.query.action;
+    const { calendar } = req.body;
+
+    if (!Array.isArray(calendar)) {
+      return res.status(400).json({ message: "Calendar must be an array" });
+    }
+
+    for (const entry of calendar) {
+      const { date, availableSlots } = entry;
+
+      if (action === "delete") {
+        for (const slot of availableSlots) {
+          await Doctor.updateOne(
+            { _id: doctorId, "calendar.date": date },
+            {
+              $pull: {
+                "calendar.$.availableSlots": {
+                  startTime: slot.startTime,
+                  endTime: slot.endTime,
+                },
+              },
+            }
+          );
+        }
+      } else if (action === "add") {
+        const existingDate = await Doctor.findOne({ _id: doctorId, "calendar.date": date });
+
+        if (!existingDate) {
+          await Doctor.updateOne(
+            { _id: doctorId },
+            {
+              $push: {
+                calendar: {
+                  date: date,
+                  availableSlots: availableSlots,
+                },
+              },
+            }
+          );
+        } else {
+          for (const slot of availableSlots) {
+            await Doctor.updateOne(
+              { _id: doctorId, "calendar.date": date },
+              {
+                $addToSet: { "calendar.$.availableSlots": slot }, // ✅ Prevent duplicates
+              }
+            );
+          }
+        }
+      }
+    }
+
+    return res.status(200).json({
+      message: action === "delete" ? "Slots deleted successfully" : "Slots added successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 
 
 
-//const Doctor = require("../models/doctorsSchema"); // Import your schema
-
-// Create or update time slots
 // const createTimeSlot = async (req, res) => {
 //   try {
-//     const doctorId = req.params.doctorId; // This should be MongoDB _id
+//     console.log("reqQuery:",req.query);
+//     console.log("reqBody:",req.body);
+//     const doctorId = req.query.doctorId;
+//     const action = req.query.action; // "add" or "delete"
+//     const { calendar } = req.body;
+
+//     if (!Array.isArray(calendar)) {
+//       return res.status(400).json({ message: "Calendar must be an array" });
+//     }
+
+//     if (action === "delete") {
+//       // Delete logic
+//       for (const entry of calendar) {
+//         const { date, availableSlots } = entry;
+
+//         for (const slot of availableSlots) {
+//           await Doctor.updateOne(
+//             { _id: doctorId },
+//             {
+//               $pull: {
+//                 "calendar.$[date].availableSlots": {
+//                   startTime: slot.startTime,
+//                   endTime: slot.endTime,
+//                 },
+//               },
+//             },
+//             {
+//               arrayFilters: [{ "date.date": new Date(date) }],
+//             }
+//           );
+//         }
+//       }
+
+//       return res.status(200).json({ message: "Slots deleted successfully" });
+//     }
+
+//     // Add/Edit logic using upsert
+//     for (const entry of calendar) {
+//       const { date, availableSlots } = entry;
+
+//       for (const slot of availableSlots) {
+//         await Doctor.updateOne(
+//           { _id: doctorId, "calendar.date": new Date(date) },
+//           {
+//             $pull: {
+//               "calendar.$.availableSlots": {
+//                 startTime: slot.startTime,
+//                 endTime: slot.endTime,
+//               },
+//             },
+//           }
+//         );
+
+//         await Doctor.updateOne(
+//           { _id: doctorId, "calendar.date": new Date(date) },
+//           {
+//             $push: { "calendar.$.availableSlots": slot },
+//           },
+//           { upsert: true }
+//         );
+//       }
+//     }
+
+//     return res.status(200).json({ message: "Slots added/edited successfully" });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
+
+
+
+
+// const createTimeSlot = async (req, res) => {
+//   try {
+//     const doctorId = req.params.doctorId;
 //     const { calendar } = req.body;
 
 //     if (!Array.isArray(calendar)) {
@@ -75,141 +210,104 @@ const updateDoctor = async (req, res) => {
 //       return res.status(404).json({ message: "Doctor not found" });
 //     }
 
+//     const rejectedSlots = [];
+
 //     for (const entry of calendar) {
 //       const { date, availableSlots } = entry;
+//       const normalizedDate = new Date(date);
 
-//       // Check if date already exists in doctor's calendar
 //       const existingDate = doctor.calendar.find(
-//         (d) => d.date.toISOString() === new Date(date).toISOString()
+//         (d) => d.date.toISOString() === normalizedDate.toISOString()
 //       );
 
+//       const normalizeSlot = (slot) => ({
+//         ...slot,
+//         start: new Date(slot.startTime).getTime(),
+//         end: new Date(slot.endTime).getTime(),
+//       });
+
 //       if (existingDate) {
-//         existingDate.availableSlots.push(...availableSlots);
+//         for (const slot of availableSlots) {
+//           const { startTime, endTime } = slot;
+//           const normalizedSlot = normalizeSlot(slot);
+
+//           // Duplicate check
+//           const isDuplicate = existingDate.availableSlots.some((s) => {
+//             return (
+//               new Date(s.startTime).getTime() === normalizedSlot.start &&
+//               new Date(s.endTime).getTime() === normalizedSlot.end
+//             );
+//           });
+//           if (isDuplicate) {
+//             rejectedSlots.push({ date, ...slot, reason: "Duplicate slot" });
+//             continue;
+//           }
+
+//           // Overlap check
+//           const isOverlapping = existingDate.availableSlots.some((s) => {
+//             const sStart = new Date(s.startTime).getTime();
+//             const sEnd = new Date(s.endTime).getTime();
+//             return (
+//               (normalizedSlot.start >= sStart && normalizedSlot.start < sEnd) ||
+//               (normalizedSlot.end > sStart && normalizedSlot.end <= sEnd) ||
+//               (normalizedSlot.start <= sStart && normalizedSlot.end >= sEnd)
+//             );
+//           });
+//           if (isOverlapping) {
+//             rejectedSlots.push({ date, ...slot, reason: "Overlapping slot" });
+//             continue;
+//           }
+
+//           existingDate.availableSlots.push(slot);
+//         }
 //       } else {
-//         doctor.calendar.push({ date, availableSlots });
+//         const uniqueSlots = [];
+//         for (const slot of availableSlots) {
+//           const normalizedSlot = normalizeSlot(slot);
+
+//           const isDuplicate = uniqueSlots.some((s) => {
+//             return (
+//               new Date(s.startTime).getTime() === normalizedSlot.start &&
+//               new Date(s.endTime).getTime() === normalizedSlot.end
+//             );
+//           });
+//           if (isDuplicate) {
+//             rejectedSlots.push({ date, ...slot, reason: "Duplicate slot" });
+//             continue;
+//           }
+
+//           const isOverlapping = uniqueSlots.some((s) => {
+//             const sStart = new Date(s.startTime).getTime();
+//             const sEnd = new Date(s.endTime).getTime();
+//             return (
+//               (normalizedSlot.start >= sStart && normalizedSlot.start < sEnd) ||
+//               (normalizedSlot.end > sStart && normalizedSlot.end <= sEnd) ||
+//               (normalizedSlot.start <= sStart && normalizedSlot.end >= sEnd)
+//             );
+//           });
+//           if (isOverlapping) {
+//             rejectedSlots.push({ date, ...slot, reason: "Overlapping slot" });
+//             continue;
+//           }
+
+//           uniqueSlots.push(slot);
+//         }
+
+//         doctor.calendar.push({ date: normalizedDate, availableSlots: uniqueSlots });
 //       }
 //     }
 
 //     await doctor.save();
-//     return res.status(200).json({ message: "Slots updated",doctor});
+//     return res.status(200).json({
+//       message: "Slots processed",
+//       doctor,
+//       rejectedSlots,
+//     });
 //   } catch (error) {
 //     console.error(error);
 //     return res.status(500).json({ message: "Internal Server Error" });
 //   }
 // };
-
-const createTimeSlot = async (req, res) => {
-  try {
-    const doctorId = req.params.doctorId;
-    const { calendar } = req.body;
-
-    if (!Array.isArray(calendar)) {
-      return res.status(400).json({ message: "Calendar must be an array" });
-    }
-
-    const doctor = await Doctor.findById(doctorId);
-    if (!doctor) {
-      return res.status(404).json({ message: "Doctor not found" });
-    }
-
-    const rejectedSlots = [];
-
-    for (const entry of calendar) {
-      const { date, availableSlots } = entry;
-      const normalizedDate = new Date(date);
-
-      const existingDate = doctor.calendar.find(
-        (d) => d.date.toISOString() === normalizedDate.toISOString()
-      );
-
-      const normalizeSlot = (slot) => ({
-        ...slot,
-        start: new Date(slot.startTime).getTime(),
-        end: new Date(slot.endTime).getTime(),
-      });
-
-      if (existingDate) {
-        for (const slot of availableSlots) {
-          const { startTime, endTime } = slot;
-          const normalizedSlot = normalizeSlot(slot);
-
-          // Duplicate check
-          const isDuplicate = existingDate.availableSlots.some((s) => {
-            return (
-              new Date(s.startTime).getTime() === normalizedSlot.start &&
-              new Date(s.endTime).getTime() === normalizedSlot.end
-            );
-          });
-          if (isDuplicate) {
-            rejectedSlots.push({ date, ...slot, reason: "Duplicate slot" });
-            continue;
-          }
-
-          // Overlap check
-          const isOverlapping = existingDate.availableSlots.some((s) => {
-            const sStart = new Date(s.startTime).getTime();
-            const sEnd = new Date(s.endTime).getTime();
-            return (
-              (normalizedSlot.start >= sStart && normalizedSlot.start < sEnd) ||
-              (normalizedSlot.end > sStart && normalizedSlot.end <= sEnd) ||
-              (normalizedSlot.start <= sStart && normalizedSlot.end >= sEnd)
-            );
-          });
-          if (isOverlapping) {
-            rejectedSlots.push({ date, ...slot, reason: "Overlapping slot" });
-            continue;
-          }
-
-          existingDate.availableSlots.push(slot);
-        }
-      } else {
-        const uniqueSlots = [];
-        for (const slot of availableSlots) {
-          const normalizedSlot = normalizeSlot(slot);
-
-          const isDuplicate = uniqueSlots.some((s) => {
-            return (
-              new Date(s.startTime).getTime() === normalizedSlot.start &&
-              new Date(s.endTime).getTime() === normalizedSlot.end
-            );
-          });
-          if (isDuplicate) {
-            rejectedSlots.push({ date, ...slot, reason: "Duplicate slot" });
-            continue;
-          }
-
-          const isOverlapping = uniqueSlots.some((s) => {
-            const sStart = new Date(s.startTime).getTime();
-            const sEnd = new Date(s.endTime).getTime();
-            return (
-              (normalizedSlot.start >= sStart && normalizedSlot.start < sEnd) ||
-              (normalizedSlot.end > sStart && normalizedSlot.end <= sEnd) ||
-              (normalizedSlot.start <= sStart && normalizedSlot.end >= sEnd)
-            );
-          });
-          if (isOverlapping) {
-            rejectedSlots.push({ date, ...slot, reason: "Overlapping slot" });
-            continue;
-          }
-
-          uniqueSlots.push(slot);
-        }
-
-        doctor.calendar.push({ date: normalizedDate, availableSlots: uniqueSlots });
-      }
-    }
-
-    await doctor.save();
-    return res.status(200).json({
-      message: "Slots processed",
-      doctor,
-      rejectedSlots,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-};
 // Delete a specific time slot
 const deleteTimeSlot = async (req, res) => {
   try {

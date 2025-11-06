@@ -13,8 +13,8 @@ const validateUpdateDoctor = require('../validators/doctorValidator');
 const  {deleteSlotSchema, createSlotSchema}  = require('../validators/timeSlotValidors');
 
 router.get('/', getFilteredDoctors); 
-router.put('/:id', validateUpdateDoctor, updateDoctor);
-router.put('/createSlot/:doctorId',createSlotSchema,validateRequest, createTimeSlot);
+// router.put('/:id', validateUpdateDoctor, updateDoctor);
+router.put('/createSlot',createSlotSchema,validateRequest, createTimeSlot);
 router.put('/deleteSlot/:doctorId',deleteSlotSchema,validateRequest, deleteTimeSlot);
 router.get('/getSlots/:doctorId', getTimeSlot);
 
