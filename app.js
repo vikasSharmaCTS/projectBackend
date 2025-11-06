@@ -48,6 +48,7 @@ const errorHandler = require("./src/middleware/errorHandler");
 const doctorRoutes = require("./src/routes/doctorRoute");
 const appointmentRoutes = require("./src/routes/appointmentRoute");
 const consultationRouter = require("./src/routes/consultationRoutes");
+const editAppRoutes = require("./src/routes/editAppRoutes")
 const cors = require("cors");
 const connectDB = require("./src/config/db.config");
 
@@ -70,6 +71,7 @@ app.use(cors({
 app.use("/doctors", doctorRoutes);
 app.use("/appointments", appointmentRoutes);
 app.use("/consultations", consultationRouter);
+app.use("/", editAppRoutes);
 
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 app.use(errorHandler);

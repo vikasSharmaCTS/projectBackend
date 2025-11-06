@@ -4,11 +4,12 @@ const { bookAppointment, getAppointmentById } = require('../controllers/appointm
 const bookingSchema = require('../validators/bookingSchema');
 const { validationResult } = require('express-validator');
 
-router.post('/appointment', bookingSchema, (req, res) => {
+// router.post('/appointment', bookingSchema, (req, res) => {
 
-  bookAppointment(req, res);
-});
+//   bookAppointment(req, res);
+// });
+router.post('/bookAppointment', bookingSchema, bookAppointment);
 
-router.get('/:appointmentId', getAppointmentById);
+// router.get('/:appointmentId', getAppointmentById);
 
 module.exports = router;

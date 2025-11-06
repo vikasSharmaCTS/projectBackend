@@ -1,36 +1,65 @@
-const fs = require('fs');
-const path = require('path');
- 
-const filePath = path.join(__dirname, '../data/appointments.json');
- 
-const consultationsPath = path.join(__dirname, '../data/consultations.json');
- 
-exports.getPreviousAppointments = (req, res) => {
-  const appointments = JSON.parse(fs.readFileSync(filePath));
-  const today = new Date().toISOString().split('T')[0];
- 
-  const previous = appointments.filter(appt => appt.date < today)
-  res.json(previous);
-};
-exports.getPreviousAppointmentById = (req, res) => {
-  const appointments = JSON.parse(fs.readFileSync(filePath));
-  const consultations = JSON.parse(fs.readFileSync(consultationsPath));
-  const today = new Date().toISOString().split('T')[0];
-  const { appointmentId } = req.params;
- 
-  const appointment = appointments.find(appt => appt.appointmentId === appointmentId && appt.date < today);
- 
-  if (!appointment) {
-    return res.status(404).json({ error: 'Previous appointment not found' });
-  }
- 
-  if (appointment.consultationId) {
-    const consultation = consultations.find(c => c.id === appointment.consultationId);
-    if (consultation) {
-      appointment.consultation = consultation;
+const mongoose = require('mongoose');
+const Appointment = require('../models/appointmentSchema');
+const Consultation = require('../models/consultationSchema');
+
+
+exports.getPreviousAppointments = async (req, res) => {
+  try {
+    const today = new Date();
+    const { patientId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(patientId)) {
+      return res.status(400).json({ message: 'Invalid patientId format' });
     }
+
+    const previousAppointments = await Appointment.find({
+      patientId,
+      date: { $lt: today }
+    })
+      .populate('patientId', 'name emailId')
+      .populate('doctorId', 'name specialty');
+
+    res.json(previousAppointments);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ message: 'Bad Request', error: error.message });
   }
- 
-  res.json(appointment);
 };
- 
+
+exports.getPreviousAppointmentById = async (req, res) => {
+  try {
+    const { patientId, appointmentId } = req.params;
+    const today = new Date();
+
+    if (
+      !mongoose.Types.ObjectId.isValid(patientId) ||
+      !mongoose.Types.ObjectId.isValid(appointmentId)
+    ) {
+      return res.status(400).json({ message: 'Invalid patientId or appointmentId format' });
+    }
+
+    const appointment = await Appointment.findOne({
+      _id: appointmentId,
+      patientId,
+      date: { $lt: today }
+    })
+      .populate('patientId', 'name emailId')
+      .populate('doctorId', 'name specialty');
+
+    if (!appointment) {
+      return res.status(404).json({ error: 'Previous appointment not found' });
+    }
+
+    if (appointment.consultationId) {
+      const consultation = await Consultation.findById(appointment.consultationId);
+      if (consultation) {
+        appointment._doc.consultation = consultation;
+      }
+    }
+
+    res.json(appointment);
+  } catch (error) {
+    console.error(error);
+    res.status(404).json({ message: 'Not Found', error: error.message });
+  }
+};
