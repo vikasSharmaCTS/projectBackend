@@ -6,21 +6,21 @@ const appointmentSchema = new mongoose.Schema({
     ref: 'Patient',
     required: true
   },
-  doctorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor',
-    required: true
+  registrationNumber: {
+    type: String,
+    required: true,
+    index: true 
   },
   date: {
     type: Date,
     required: true
   },
   startTime: {
-    type: Date,
+    type: String,
     required: true
   },
   endTime: {
-    type: Date,
+    type: String,
     required: true
   },
   status: {
@@ -35,6 +35,3 @@ const appointmentSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Appointments', appointmentSchema);
-
-
-

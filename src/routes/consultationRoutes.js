@@ -3,11 +3,15 @@ const router = express.Router();
 const consultation = require("../controllers/consultationController");
 const consultationSchema = require("../validators/consultationSchema");
 
+// GET routes using query params
 router.get("/", consultation.getAllAppointments);
-router.get("/:doctorId/:appointmentId", consultation.getAppointmentsByDoctorAndAppointmentId);
-router.get("/:doctorId", consultation.getAppointmentsByDoctor);
+router.get("/appointment", consultation.getAppointmentsByDoctorAndAppointmentId); // ?registrationNumber=&appointmentId=
+router.get("/doctor", consultation.getAppointmentsByDoctor); // ?registrationNumber=
 
-router.post("/:doctorId/:appointmentId/createConsultation", consultationSchema, consultation.createConsultation);
-router.put("/:doctorId/:appointmentId/updateConsultation", consultation.updateConsultation);
+// POST route using request body
+router.post("/createConsultation", consultationSchema, consultation.createConsultation);
+
+// PUT route using request body
+router.put("/updateConsultation", consultation.updateConsultation);
 
 module.exports = router;

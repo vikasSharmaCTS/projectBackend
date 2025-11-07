@@ -1,36 +1,41 @@
-const mongoose = require('mongoose');
- 
-const consultationSchema = new mongoose.Schema({
- 
-  //consultaion id  will be the object id
- 
-  doctorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor',
-    required: true
+const mongoose = require("mongoose");
+
+const consultationSchema = new mongoose.Schema(
+  {
+    registrationNumber: {
+      type: String,
+      required: true,
+      index: true 
+    },
+    patientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Patient",
+      required: true
+    },
+    appointmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Appointments",
+      required: true,
+      unique: true 
+    },
+    notes: {
+      type: String,
+      default: ""
+    },
+    prescription: {
+      type: String,
+      default: ""
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
   },
-  patientId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Patient',
-    required: true
-  },
-  notes: {
-    type: String,
-    required: true,
-    minlength: 10,
-    maxlength: 1000
-  },
-  prescription: {
-    type: String, // stores file path or URL
-    required: true
-  },
-  appointmentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Appointment',
-    required: true
-  }
-}, { timestamps: true });
- 
-module.exports = mongoose.model('Consultation', consultationSchema, 'Consultations');
- 
- 
+  { timestamps: true } 
+);
+
+module.exports = mongoose.model("Consultation", consultationSchema);

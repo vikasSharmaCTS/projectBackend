@@ -54,7 +54,7 @@ exports.signup = async (req, res) => {
       age,
       gender,
       phoneNumber,
-      emailId: email // ✅ Added this
+      emailId: email 
     });
 
     const credentials = await Credentials.create({
