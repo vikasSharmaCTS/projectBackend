@@ -20,19 +20,22 @@ const getFilteredDoctors = async (req, res) => {
     const doctors = await Doctor.find(Object.keys(query).length ? query : {});
 
     if (!doctors || doctors.length === 0) {
-      return res.status(404).json({ message: 'No doctors found' });
+      return res.status(404).json({ message: "No doctors found" });
     }
 
     res.json(doctors);
   } catch (error) {
-    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
 // PUT /doctors/:id
 const updateDoctor = async (req, res) => {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  if (!errors.isEmpty())
+    return res.status(400).json({ errors: errors.array() });
 
   try {
     const doctor = await Doctor.findById(req.params.id);
@@ -52,65 +55,87 @@ const updateDoctor = async (req, res) => {
 
 const timeSlots = async (req, res) => {
   try {
-    const registrationNumber = req.query.registrationNumber; // ✅ Use registrationNumber
-    const action = req.query.action;
+    const registrationNumber = req.query.registrationNumber;
     const { calendar } = req.body;
 
     if (!Array.isArray(calendar)) {
       return res.status(400).json({ message: "Calendar must be an array" });
     }
 
+    const rejectedSlots = [];
+
     for (const entry of calendar) {
       const { date, availableSlots } = entry;
+      const dateObj = new Date(date); // Convert to Date for Mongo
 
-      if (action === "delete") {
-        for (const slot of availableSlots) {
-          await Doctor.updateOne(
-            { registrationNumber: registrationNumber, "calendar.date": date }, // ✅ Changed here
-            {
-              $pull: {
-                "calendar.$.availableSlots": {
-                  startTime: slot.startTime,
-                  endTime: slot.endTime,
-                },
-              },
-            }
-          );
+      // Fetch doctor
+      const doctor = await Doctor.findOne({ registrationNumber });
+
+      // Find calendar entry by comparing timestamps
+      let calendarEntry = doctor?.calendar.find(c => c.date.getTime() === dateObj.getTime());
+      let existingSlots = calendarEntry ? calendarEntry.availableSlots : [];
+
+      // Deduplicate incoming slots
+      const uniqueSlots = [];
+      const seen = new Set();
+      for (const slot of availableSlots) {
+        const key = `${slot.startTime}-${slot.endTime}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueSlots.push(slot);
         }
-      } else if (action === "add") {
-        const existingDate = await Doctor.findOne({
-          registrationNumber: registrationNumber, // ✅ Changed here
-          "calendar.date": date,
-        });
+      }
 
-        if (!existingDate) {
+      for (const slot of uniqueSlots) {
+        const { startTime, endTime } = slot;
+
+        // Validate startTime < endTime
+        if (startTime >= endTime) {
+          rejectedSlots.push({ date, startTime, endTime, reason: "Invalid slot: startTime must be less than endTime" });
+          continue;
+        }
+
+        // Check overlap
+        const isOverlapping = existingSlots.some(existing => (
+          startTime < existing.endTime && endTime > existing.startTime
+        ));
+
+        if (isOverlapping) {
+          rejectedSlots.push({ date, startTime, endTime, reason: "Overlaps with an existing slot" });
+          continue;
+        }
+
+        // Insert slot
+        if (!calendarEntry) {
+          // If date doesn't exist, create it
           await Doctor.updateOne(
-            { registrationNumber: registrationNumber }, // ✅ Changed here
+            { registrationNumber },
             {
               $push: {
                 calendar: {
-                  date: date,
-                  availableSlots: availableSlots,
+                  date: dateObj,
+                  availableSlots: [slot],
                 },
               },
             }
           );
+          // Update local reference
+          calendarEntry = { date: dateObj, availableSlots: [slot] };
+          existingSlots = calendarEntry.availableSlots;
         } else {
-          for (const slot of availableSlots) {
-            await Doctor.updateOne(
-              { registrationNumber: registrationNumber, "calendar.date": date }, // ✅ Changed here
-              {
-                $addToSet: { "calendar.$.availableSlots": slot }, // ✅ Prevent duplicates
-              }
-            );
-          }
+          // Add slot without duplicates
+          await Doctor.updateOne(
+            { registrationNumber, "calendar.date": dateObj },
+            {
+              $addToSet: { "calendar.$.availableSlots": slot },
+            }
+          );
+          existingSlots.push(slot);
         }
       }
     }
 
-    return res.status(200).json({
-      message: action === "delete" ? "Slots deleted successfully" : "Slots added successfully",
-    });
+    return res.status(200).json({ message: "Slots processed successfully", rejectedSlots });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -129,27 +154,48 @@ const editSlots = async (req, res) => {
     // Remove previous slot from its date
     await Doctor.updateOne(
       { registrationNumber, "calendar.date": previousSlot.date },
-      { $pull: { "calendar.$.availableSlots": { startTime: previousSlot.startTime, endTime: previousSlot.endTime } } }
+      {
+        $pull: {
+          "calendar.$.availableSlots": {
+            startTime: previousSlot.startTime,
+            endTime: previousSlot.endTime,
+          },
+        },
+      }
     );
 
     if (previousSlot.date === newSlot.date) {
       // Same date: just add new time slot
       await Doctor.updateOne(
         { registrationNumber, "calendar.date": newSlot.date },
-        { $addToSet: { "calendar.$.availableSlots": { startTime: newSlot.startTime, endTime: newSlot.endTime } } }
+        {
+          $addToSet: {
+            "calendar.$.availableSlots": {
+              startTime: newSlot.startTime,
+              endTime: newSlot.endTime,
+            },
+          },
+        }
       );
     } else {
       // Date changed: check if new date exists
       const existingDate = await Doctor.findOne({
         registrationNumber,
-        "calendar.date": newSlot.date
+        "calendar.date": newSlot.date,
       });
 
       if (existingDate) {
         // Add new slot to existing date
         await Doctor.updateOne(
           { registrationNumber, "calendar.date": newSlot.date },
-          { $addToSet: { "calendar.$.availableSlots": { startTime: newSlot.startTime, endTime: newSlot.endTime } } }
+          {
+            $addToSet: {
+              "calendar.$.availableSlots": {
+                startTime: newSlot.startTime,
+                endTime: newSlot.endTime,
+              },
+            },
+          }
         );
       } else {
         // Create new date with slot
@@ -159,9 +205,11 @@ const editSlots = async (req, res) => {
             $push: {
               calendar: {
                 date: newSlot.date,
-                availableSlots: [{ startTime: newSlot.startTime, endTime: newSlot.endTime }]
-              }
-            }
+                availableSlots: [
+                  { startTime: newSlot.startTime, endTime: newSlot.endTime },
+                ],
+              },
+            },
           }
         );
       }
@@ -174,306 +222,6 @@ const editSlots = async (req, res) => {
   }
 };
 
-
-// const createTimeSlot = async (req, res) => {
-//   try {
-//     const doctorId = req.query.doctorId;
-//     const action = req.query.action;
-//     const { calendar } = req.body;
-
-//     if (!Array.isArray(calendar)) {
-//       return res.status(400).json({ message: "Calendar must be an array" });
-//     }
-
-//     for (const entry of calendar) {
-//       const { date, availableSlots } = entry;
-
-//       if (action === "delete") {
-//         for (const slot of availableSlots) {
-//           await Doctor.updateOne(
-//             { _id: doctorId, "calendar.date": date },
-//             {
-//               $pull: {
-//                 "calendar.$.availableSlots": {
-//                   startTime: slot.startTime,
-//                   endTime: slot.endTime,
-//                 },
-//               },
-//             }
-//           );
-//         }
-//       } else if (action === "add") {
-//         const existingDate = await Doctor.findOne({ _id: doctorId, "calendar.date": date });
-
-//         if (!existingDate) {
-//           await Doctor.updateOne(
-//             { _id: doctorId },
-//             {
-//               $push: {
-//                 calendar: {
-//                   date: date,
-//                   availableSlots: availableSlots,
-//                 },
-//               },
-//             }
-//           );
-//         } else {
-//           for (const slot of availableSlots) {
-//             await Doctor.updateOne(
-//               { _id: doctorId, "calendar.date": date },
-//               {
-//                 $addToSet: { "calendar.$.availableSlots": slot }, // ✅ Prevent duplicates
-//               }
-//             );
-//           }
-//         }
-//       }
-//     }
-
-//     return res.status(200).json({
-//       message: action === "delete" ? "Slots deleted successfully" : "Slots added successfully",
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({ message: "Internal Server Error" });
-//   }
-// };
-
-
-
-// const createTimeSlot = async (req, res) => {
-//   try {
-//     console.log("reqQuery:",req.query);
-//     console.log("reqBody:",req.body);
-//     const doctorId = req.query.doctorId;
-//     const action = req.query.action; // "add" or "delete"
-//     const { calendar } = req.body;
-
-//     if (!Array.isArray(calendar)) {
-//       return res.status(400).json({ message: "Calendar must be an array" });
-//     }
-
-//     if (action === "delete") {
-//       // Delete logic
-//       for (const entry of calendar) {
-//         const { date, availableSlots } = entry;
-
-//         for (const slot of availableSlots) {
-//           await Doctor.updateOne(
-//             { _id: doctorId },
-//             {
-//               $pull: {
-//                 "calendar.$[date].availableSlots": {
-//                   startTime: slot.startTime,
-//                   endTime: slot.endTime,
-//                 },
-//               },
-//             },
-//             {
-//               arrayFilters: [{ "date.date": new Date(date) }],
-//             }
-//           );
-//         }
-//       }
-
-//       return res.status(200).json({ message: "Slots deleted successfully" });
-//     }
-
-//     // Add/Edit logic using upsert
-//     for (const entry of calendar) {
-//       const { date, availableSlots } = entry;
-
-//       for (const slot of availableSlots) {
-//         await Doctor.updateOne(
-//           { _id: doctorId, "calendar.date": new Date(date) },
-//           {
-//             $pull: {
-//               "calendar.$.availableSlots": {
-//                 startTime: slot.startTime,
-//                 endTime: slot.endTime,
-//               },
-//             },
-//           }
-//         );
-
-//         await Doctor.updateOne(
-//           { _id: doctorId, "calendar.date": new Date(date) },
-//           {
-//             $push: { "calendar.$.availableSlots": slot },
-//           },
-//           { upsert: true }
-//         );
-//       }
-//     }
-
-//     return res.status(200).json({ message: "Slots added/edited successfully" });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({ message: "Internal Server Error" });
-//   }
-// };
-
-
-
-
-// const createTimeSlot = async (req, res) => {
-//   try {
-//     const doctorId = req.params.doctorId;
-//     const { calendar } = req.body;
-
-//     if (!Array.isArray(calendar)) {
-//       return res.status(400).json({ message: "Calendar must be an array" });
-//     }
-
-//     const doctor = await Doctor.findById(doctorId);
-//     if (!doctor) {
-//       return res.status(404).json({ message: "Doctor not found" });
-//     }
-
-//     const rejectedSlots = [];
-
-//     for (const entry of calendar) {
-//       const { date, availableSlots } = entry;
-//       const normalizedDate = new Date(date);
-
-//       const existingDate = doctor.calendar.find(
-//         (d) => d.date.toISOString() === normalizedDate.toISOString()
-//       );
-
-//       const normalizeSlot = (slot) => ({
-//         ...slot,
-//         start: new Date(slot.startTime).getTime(),
-//         end: new Date(slot.endTime).getTime(),
-//       });
-
-//       if (existingDate) {
-//         for (const slot of availableSlots) {
-//           const { startTime, endTime } = slot;
-//           const normalizedSlot = normalizeSlot(slot);
-
-//           // Duplicate check
-//           const isDuplicate = existingDate.availableSlots.some((s) => {
-//             return (
-//               new Date(s.startTime).getTime() === normalizedSlot.start &&
-//               new Date(s.endTime).getTime() === normalizedSlot.end
-//             );
-//           });
-//           if (isDuplicate) {
-//             rejectedSlots.push({ date, ...slot, reason: "Duplicate slot" });
-//             continue;
-//           }
-
-//           // Overlap check
-//           const isOverlapping = existingDate.availableSlots.some((s) => {
-//             const sStart = new Date(s.startTime).getTime();
-//             const sEnd = new Date(s.endTime).getTime();
-//             return (
-//               (normalizedSlot.start >= sStart && normalizedSlot.start < sEnd) ||
-//               (normalizedSlot.end > sStart && normalizedSlot.end <= sEnd) ||
-//               (normalizedSlot.start <= sStart && normalizedSlot.end >= sEnd)
-//             );
-//           });
-//           if (isOverlapping) {
-//             rejectedSlots.push({ date, ...slot, reason: "Overlapping slot" });
-//             continue;
-//           }
-
-//           existingDate.availableSlots.push(slot);
-//         }
-//       } else {
-//         const uniqueSlots = [];
-//         for (const slot of availableSlots) {
-//           const normalizedSlot = normalizeSlot(slot);
-
-//           const isDuplicate = uniqueSlots.some((s) => {
-//             return (
-//               new Date(s.startTime).getTime() === normalizedSlot.start &&
-//               new Date(s.endTime).getTime() === normalizedSlot.end
-//             );
-//           });
-//           if (isDuplicate) {
-//             rejectedSlots.push({ date, ...slot, reason: "Duplicate slot" });
-//             continue;
-//           }
-
-//           const isOverlapping = uniqueSlots.some((s) => {
-//             const sStart = new Date(s.startTime).getTime();
-//             const sEnd = new Date(s.endTime).getTime();
-//             return (
-//               (normalizedSlot.start >= sStart && normalizedSlot.start < sEnd) ||
-//               (normalizedSlot.end > sStart && normalizedSlot.end <= sEnd) ||
-//               (normalizedSlot.start <= sStart && normalizedSlot.end >= sEnd)
-//             );
-//           });
-//           if (isOverlapping) {
-//             rejectedSlots.push({ date, ...slot, reason: "Overlapping slot" });
-//             continue;
-//           }
-
-//           uniqueSlots.push(slot);
-//         }
-
-//         doctor.calendar.push({ date: normalizedDate, availableSlots: uniqueSlots });
-//       }
-//     }
-
-//     await doctor.save();
-//     return res.status(200).json({
-//       message: "Slots processed",
-//       doctor,
-//       rejectedSlots,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({ message: "Internal Server Error" });
-//   }
-// };
-// Delete a specific time slot
-
-
-// const deleteTimeSlot = async (req, res) => {
-//   try {
-//     const { registrationNumber } = req.query;
-//     const { date, startTime, endTime } = req.body;
-
-//     if (!registrationNumber || !date || !startTime || !endTime) {
-//       return res.status(400).json({ message: "Missing required fields" });
-//     }
-
-//     const doctor = await Doctor.findOne({ registrationNumber });
-//     if (!doctor) {
-//       return res.status(404).json({ message: "Doctor not found" });
-//     }
-
-//     // Find date entry
-//     const dateEntry = doctor.calendar.find(entry => entry.date === date);
-//     if (!dateEntry) {
-//       return res.status(404).json({ message: `No slots found for date ${date}` });
-//     }
-
-//     // Remove slot
-//     const updatedSlots = dateEntry.availableSlots.filter(
-//       slot => !(slot.startTime === startTime && slot.endTime === endTime)
-//     );
-
-//     if (updatedSlots.length === dateEntry.availableSlots.length) {
-//       return res.status(404).json({ message: `No matching slot found on ${date}` });
-//     }
-
-//     // Update calendar
-//     if (updatedSlots.length === 0) {
-//       doctor.calendar = doctor.calendar.filter(entry => entry.date !== date);
-//     } else {
-//       dateEntry.availableSlots = updatedSlots;
-//     }
-
-//     await doctor.save();
-//     return res.status(200).json({ message: "Slot deleted successfully", doctor });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({ message: "Internal Server Error" });
-//   }
-// };
 const deleteTimeSlot = async (req, res) => {
   try {
     const { registrationNumber } = req.query;
@@ -487,13 +235,15 @@ const deleteTimeSlot = async (req, res) => {
       { registrationNumber, "calendar.date": new Date(date) },
       {
         $pull: {
-          "calendar.$.availableSlots": { startTime, endTime }
-        }
+          "calendar.$.availableSlots": { startTime, endTime },
+        },
       }
     );
 
     if (result.modifiedCount === 0) {
-      return res.status(404).json({ message: `No matching slot found on ${date}` });
+      return res
+        .status(404)
+        .json({ message: `No matching slot found on ${date}` });
     }
 
     return res.status(200).json({ message: "Slot deleted successfully" });
@@ -502,8 +252,6 @@ const deleteTimeSlot = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
-
 
 //   try {
 //     const doctorId = req.params.doctorId;
@@ -537,22 +285,26 @@ const getTimeSlot = async (req, res) => {
     const { registrationNumber } = req.query; // ✅ Get registrationNumber from query params
 
     if (!registrationNumber) {
-      return res.status(400).json({ message: "registrationNumber is required" });
+      return res
+        .status(400)
+        .json({ message: "registrationNumber is required" });
     }
 
     // Find doctor by registrationNumber
-    const doctor = await Doctor.findOne({ registrationNumber }).select("calendar name specialty");
+    const doctor = await Doctor.findOne({ registrationNumber }).select(
+      "calendar name specialty"
+    );
     if (!doctor) {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
     // Flatten all available slots into a single array
-    const slots = doctor.calendar.flatMap(entry =>
-      entry.availableSlots.map(slot => ({
+    const slots = doctor.calendar.flatMap((entry) =>
+      entry.availableSlots.map((slot) => ({
         date: entry.date,
         startTime: slot.startTime,
         endTime: slot.endTime,
-        isBooked: slot.isBooked
+        isBooked: slot.isBooked,
       }))
     );
 
@@ -569,5 +321,5 @@ module.exports = {
   timeSlots,
   deleteTimeSlot,
   getTimeSlot,
-  editSlots
+  editSlots,
 };
