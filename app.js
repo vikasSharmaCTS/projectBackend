@@ -39,7 +39,7 @@ app.use("/doctors",authenticate, doctorRoutes);
 app.use("/appointments", appointmentRoutes);
 app.use("/", editAppRoute);
 app.use("/profile", profileRoute); 
-app.use("/consultations",authenticate, authorize(['Doctor']), consultationRouter);
+app.use("/consultations",authenticate, consultationRouter);
 
 app.use((req, res, next) => {
   res.status(404).json({ message: "Route not found" });

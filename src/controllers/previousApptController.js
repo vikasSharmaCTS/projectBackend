@@ -22,17 +22,36 @@ exports.getPreviousAppointments = async (req, res) => {
         .json({ message: "No previous appointments found" });
     }
 
-    const formatted = previousAppointments.map((app) => ({
-      id: app._id.toString(),
-      patientId: app.patientId.toString(),
-      registrationNumber: app.registrationNumber,
-      date: app.date.toISOString().split("T")[0],
-      startTime: app.startTime,
-      endTime: app.endTime,
-      status: app.status,
-      createdAt: app.createdAt,
-      updatedAt: app.updatedAt,
-    }));
+    // Collect unique registrationNumbers and fetch matching doctors
+    const regNumbers = [
+      ...new Set(previousAppointments.map((app) => app.registrationNumber).filter(Boolean)),
+    ];
+
+    let docsMap = new Map();
+    if (regNumbers.length) {
+      const doctors = await Doctor.find(
+        { registrationNumber: { $in: regNumbers } },
+        "registrationNumber name specialty"
+      );
+      docsMap = new Map(doctors.map((d) => [d.registrationNumber, d]));
+    }
+
+    const formatted = previousAppointments.map((app) => {
+      const doc = docsMap.get(app.registrationNumber) || null;
+      return {
+        id: app._id.toString(),
+        patientId: app.patientId.toString(),
+        registrationNumber: app.registrationNumber,
+        doctorName: doc ? doc.name : null,
+        specialty: doc ? doc.specialty : null,
+        date: app.date.toISOString().split("T")[0],
+        startTime: app.startTime,
+        endTime: app.endTime,
+        status: app.status,
+        createdAt: app.createdAt,
+        updatedAt: app.updatedAt,
+      };
+    });
 
     res.json(formatted);
   } catch (error) {

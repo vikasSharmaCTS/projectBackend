@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Consultation = require("../models/consultationSchema");
 const Appointment = require("../models/appointmentSchema");
 
@@ -52,26 +53,41 @@ exports.getAppointmentsByDoctor = async (req, res) => {
 
 exports.createConsultation = async (req, res) => {
   try {
-    const { registrationNumber, patientId, appointmentId, notes, prescription } = req.body;
+    const { registrationNumber, patientId, appointmentId } = req.query;
 
     if (!registrationNumber || !patientId || !appointmentId) {
-      return res.status(400).json({ message: "Missing required fields" });
+      return res.status(400).json({ message: "registrationNumber, patientId and appointmentId are required in query params" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(patientId) || !mongoose.Types.ObjectId.isValid(appointmentId)) {
+      return res.status(400).json({ message: "Invalid patientId or appointmentId format" });
     }
 
     const appointment = await Appointment.findById(appointmentId);
     if (!appointment) {
       return res.status(404).json({ message: "Appointment not found" });
     }
+
     if (appointment.status !== "confirmed") {
       return res.status(400).json({ message: "Consultation can only be created for confirmed appointments" });
+    }
+
+    // ensure appointment belongs to the patient
+    if (appointment.patientId.toString() !== patientId) {
+      return res.status(400).json({ message: "Appointment does not belong to the provided patientId" });
+    }
+
+    // optional: ensure registrationNumber matches appointment (if stored)
+    if (appointment.registrationNumber && appointment.registrationNumber !== registrationNumber) {
+      return res.status(400).json({ message: "registrationNumber does not match appointment's registrationNumber" });
     }
 
     const consultation = new Consultation({
       registrationNumber,
       patientId,
       appointmentId,
-      notes: notes || "",
-      prescription: prescription || ""
+      notes: req.query.notes || "",
+      prescription: req.query.prescription || ""
     });
 
     await consultation.save();
