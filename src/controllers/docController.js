@@ -3,33 +3,29 @@ const { validationResult } = require("express-validator");
 
 // GET /doctors?specialty=Cardiology&id=123
 const getFilteredDoctors = async (req, res) => {
-  const { specialty, id, date } = req.query;
-
   try {
-    if (id) {
-      // Fetch doctor by MongoDB _id or custom doctorId
-      const doctor = await Doctor.findById(id); // or { doctorId: parseInt(id) }
-      if (!doctor) return res.status(404).json({ message: "Doctor not found" });
+    const { specialty, registrationNumber } = req.query;
 
-      // Filter slots by date if provided
-      let slots = doctor.calendar.flatMap(entry => {
-        if (date && entry.date.toISOString().split("T")[0] !== date) return [];
-        return entry.availableSlots.filter(slot => !slot.isBooked);
-      });
+    let query = {};
 
-      // return res.json({ doctorId: doctor._id, name: doctor.name, slots });
-      return res.json(doctor);
+    // Build query dynamically
+    if (specialty) {
+      query.specialty = specialty;
+    }
+    if (registrationNumber) {
+      query.registrationNumber = registrationNumber;
     }
 
-    // Specialty filter
-    const query = specialty ? { specialty } : {};
-    const doctors = await Doctor.find(query).select("name specialty email");
-    if (!doctors.length) return res.status(404).json({ message: "No matching doctors found" });
+    // If neither is provided → return all doctors
+    const doctors = await Doctor.find(Object.keys(query).length ? query : {});
+
+    if (!doctors || doctors.length === 0) {
+      return res.status(404).json({ message: 'No doctors found' });
+    }
 
     res.json(doctors);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 };
 
@@ -54,7 +50,7 @@ const updateDoctor = async (req, res) => {
   }
 };
 
-const createTimeSlot = async (req, res) => {
+const timeSlots = async (req, res) => {
   try {
     const registrationNumber = req.query.registrationNumber; // ✅ Use registrationNumber
     const action = req.query.action;
@@ -115,6 +111,63 @@ const createTimeSlot = async (req, res) => {
     return res.status(200).json({
       message: action === "delete" ? "Slots deleted successfully" : "Slots added successfully",
     });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const editSlots = async (req, res) => {
+  try {
+    const { registrationNumber } = req.query;
+    const { previousSlot, newSlot } = req.body;
+
+    if (!registrationNumber || !previousSlot || !newSlot) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Remove previous slot from its date
+    await Doctor.updateOne(
+      { registrationNumber, "calendar.date": previousSlot.date },
+      { $pull: { "calendar.$.availableSlots": { startTime: previousSlot.startTime, endTime: previousSlot.endTime } } }
+    );
+
+    if (previousSlot.date === newSlot.date) {
+      // Same date: just add new time slot
+      await Doctor.updateOne(
+        { registrationNumber, "calendar.date": newSlot.date },
+        { $addToSet: { "calendar.$.availableSlots": { startTime: newSlot.startTime, endTime: newSlot.endTime } } }
+      );
+    } else {
+      // Date changed: check if new date exists
+      const existingDate = await Doctor.findOne({
+        registrationNumber,
+        "calendar.date": newSlot.date
+      });
+
+      if (existingDate) {
+        // Add new slot to existing date
+        await Doctor.updateOne(
+          { registrationNumber, "calendar.date": newSlot.date },
+          { $addToSet: { "calendar.$.availableSlots": { startTime: newSlot.startTime, endTime: newSlot.endTime } } }
+        );
+      } else {
+        // Create new date with slot
+        await Doctor.updateOne(
+          { registrationNumber },
+          {
+            $push: {
+              calendar: {
+                date: newSlot.date,
+                availableSlots: [{ startTime: newSlot.startTime, endTime: newSlot.endTime }]
+              }
+            }
+          }
+        );
+      }
+    }
+
+    return res.status(200).json({ message: "Slot updated successfully" });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -376,54 +429,74 @@ const createTimeSlot = async (req, res) => {
 //   }
 // };
 // Delete a specific time slot
+
+
+// const deleteTimeSlot = async (req, res) => {
+//   try {
+//     const { registrationNumber } = req.query;
+//     const { date, startTime, endTime } = req.body;
+
+//     if (!registrationNumber || !date || !startTime || !endTime) {
+//       return res.status(400).json({ message: "Missing required fields" });
+//     }
+
+//     const doctor = await Doctor.findOne({ registrationNumber });
+//     if (!doctor) {
+//       return res.status(404).json({ message: "Doctor not found" });
+//     }
+
+//     // Find date entry
+//     const dateEntry = doctor.calendar.find(entry => entry.date === date);
+//     if (!dateEntry) {
+//       return res.status(404).json({ message: `No slots found for date ${date}` });
+//     }
+
+//     // Remove slot
+//     const updatedSlots = dateEntry.availableSlots.filter(
+//       slot => !(slot.startTime === startTime && slot.endTime === endTime)
+//     );
+
+//     if (updatedSlots.length === dateEntry.availableSlots.length) {
+//       return res.status(404).json({ message: `No matching slot found on ${date}` });
+//     }
+
+//     // Update calendar
+//     if (updatedSlots.length === 0) {
+//       doctor.calendar = doctor.calendar.filter(entry => entry.date !== date);
+//     } else {
+//       dateEntry.availableSlots = updatedSlots;
+//     }
+
+//     await doctor.save();
+//     return res.status(200).json({ message: "Slot deleted successfully", doctor });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
 const deleteTimeSlot = async (req, res) => {
   try {
-    const doctorId = req.params.doctorId;
+    const { registrationNumber } = req.query;
     const { date, startTime, endTime } = req.body;
 
-    const doctor = await Doctor.findById(doctorId);
-    if (!doctor) {
-      return res.status(404).json({ message: "Doctor not found" });
+    if (!registrationNumber || !date || !startTime || !endTime) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const dateEntry = doctor.calendar.find(
-      (entry) => entry.date.toISOString() === new Date(date).toISOString()
+    const result = await Doctor.updateOne(
+      { registrationNumber, "calendar.date": new Date(date) },
+      {
+        $pull: {
+          "calendar.$.availableSlots": { startTime, endTime }
+        }
+      }
     );
 
-    if (!dateEntry) {
-      return res
-        .status(404)
-        .json({ message: `No slots found for date ${date}` });
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ message: `No matching slot found on ${date}` });
     }
 
-    const updatedSlots = dateEntry.availableSlots.filter(
-      (slot) =>
-        !(
-          new Date(slot.startTime).toISOString() ===
-            new Date(startTime).toISOString() &&
-          new Date(slot.endTime).toISOString() ===
-            new Date(endTime).toISOString()
-        )
-    );
-
-    if (updatedSlots.length === dateEntry.availableSlots.length) {
-      return res.status(404).json({
-        message: `No matching slot found on ${date} for ${startTime} - ${endTime}`,
-      });
-    }
-
-    if (updatedSlots.length === 0) {
-      doctor.calendar = doctor.calendar.filter(
-        (entry) => entry.date.toISOString() !== new Date(date).toISOString()
-      );
-    } else {
-      dateEntry.availableSlots = updatedSlots;
-    }
-
-    await doctor.save();
-    return res
-      .status(200)
-      .json({ message: "Time slot deleted successfully", doctor });
+    return res.status(200).json({ message: "Slot deleted successfully" });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -431,12 +504,45 @@ const deleteTimeSlot = async (req, res) => {
 };
 
 
+
+// const getTimeSlot = async (req, res) => {
+//   try {
+//     const doctorId = req.params.doctorId;
+
+//     // Find doctor by ID
+//     const doctor = await Doctor.findById(doctorId).select("calendar name specialty");
+//     if (!doctor) {
+//       return res.status(404).json({ message: "Doctor not found" });
+//     }
+
+//     // Flatten all available slots into a single array
+//     const slots = doctor.calendar.flatMap(entry =>
+//       entry.availableSlots.map(slot => ({
+//         date: entry.date,
+//         startTime: slot.startTime,
+//         endTime: slot.endTime,
+//         isBooked: slot.isBooked
+//       }))
+//     );
+
+//     return res.status(200).json({
+//       slots
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
 const getTimeSlot = async (req, res) => {
   try {
-    const doctorId = req.params.doctorId;
+    const { registrationNumber } = req.query; // ✅ Get registrationNumber from query params
 
-    // Find doctor by ID
-    const doctor = await Doctor.findById(doctorId).select("calendar name specialty");
+    if (!registrationNumber) {
+      return res.status(400).json({ message: "registrationNumber is required" });
+    }
+
+    // Find doctor by registrationNumber
+    const doctor = await Doctor.findOne({ registrationNumber }).select("calendar name specialty");
     if (!doctor) {
       return res.status(404).json({ message: "Doctor not found" });
     }
@@ -451,20 +557,18 @@ const getTimeSlot = async (req, res) => {
       }))
     );
 
-    return res.status(200).json({
-      slots
-    });
+    return res.status(200).json({ slots });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-
 module.exports = {
   getFilteredDoctors,
   updateDoctor,
-  createTimeSlot,
+  timeSlots,
   deleteTimeSlot,
-  getTimeSlot
+  getTimeSlot,
+  editSlots
 };

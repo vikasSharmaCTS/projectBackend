@@ -35,7 +35,7 @@ app.use(
 );
 
 app.use("/auth", authRoute);
-app.use("/doctors",authenticate, authorize(['Doctor']), doctorRoutes);
+app.use("/doctors",authenticate, doctorRoutes);
 app.use("/appointments", appointmentRoutes);
 app.use("/", editAppRoute);
 app.use("/profile", profileRoute); 
