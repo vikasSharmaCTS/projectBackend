@@ -505,7 +505,6 @@ const deleteTimeSlot = async (req, res) => {
 
 
 
-// const getTimeSlot = async (req, res) => {
 //   try {
 //     const doctorId = req.params.doctorId;
 
