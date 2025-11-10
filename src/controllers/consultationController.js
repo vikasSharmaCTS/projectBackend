@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 const Consultation = require("../models/consultationSchema");
 const Appointment = require("../models/appointmentSchema");
+// ensure Patient model is registered so Mongoose populate('patientId') works
+require("../models/patientSchema");
 
 exports.getAllAppointments = async (req, res) => {
   try {
@@ -10,7 +12,9 @@ exports.getAllAppointments = async (req, res) => {
     return res.status(200).json({ consultations });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
@@ -18,49 +22,109 @@ exports.getAppointmentsByDoctorAndAppointmentId = async (req, res) => {
   try {
     const { registrationNumber, appointmentId } = req.query;
     if (!registrationNumber || !appointmentId) {
-      return res.status(400).json({ message: "registrationNumber and appointmentId are required" });
+      return res
+        .status(400)
+        .json({ message: "registrationNumber and appointmentId are required" });
     }
 
     const consultations = await Consultation.find({
       registrationNumber,
-      appointmentId
-    }).populate("patientId").populate("appointmentId");
-
-    return res.status(200).json({ consultations });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-exports.getAppointmentsByDoctor = async (req, res) => {
-  try {
-    const { registrationNumber } = req.query;
-    if (!registrationNumber) {
-      return res.status(400).json({ message: "registrationNumber is required" });
-    }
-
-    const consultations = await Consultation.find({ registrationNumber })
+      appointmentId,
+    })
       .populate("patientId")
       .populate("appointmentId");
 
     return res.status(200).json({ consultations });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};
+
+exports.getAppointmentsByDoctor = async (req, res) => {
+  try {
+    const registrationNumber =
+      req.params.registrationNumber || req.query.registrationNumber;
+    if (!registrationNumber) {
+      return res
+        .status(400)
+        .json({ message: "registrationNumber is required" });
+    }
+
+    // Only fetch confirmed appointments for the doctor and populate patient basic info
+    const appointments = await Appointment.find({
+      registrationNumber,
+      status: "confirmed",
+    })
+      .populate("patientId", "name age gender")
+      .sort({ date: 1, startTime: 1 });
+
+    const filteredAppointments = appointments.map((app) => ({
+      appointmentId: app._id,
+      patentId: app.patientId._id,
+      name: app.patientId.name,
+      age: app.patientId.age,
+      gender: app.patientId.gender,
+      date: app.date,
+    }));
+
+    return res.status(200).json(filteredAppointments);
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};
+
+exports.getAppointmentsByDoctorOnly = async (req, res) => {
+  try {
+    const { registrationNumber } = req.query;
+    if (!registrationNumber) {
+      return res
+        .status(400)
+        .json({ message: "registrationNumber is required" });
+    }
+
+    const appointments = await Appointment.find({ registrationNumber })
+      .populate("patientId")
+      .populate("consultationId");
+
+    return res.status(200).json({ appointments });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
 exports.createConsultation = async (req, res) => {
   try {
-    const { registrationNumber, patientId, appointmentId } = req.query;
+    const {
+      registrationNumber,
+      patientId,
+      appointmentId,
+      notes,
+      prescription,
+    } = req.body;
 
     if (!registrationNumber || !patientId || !appointmentId) {
-      return res.status(400).json({ message: "registrationNumber, patientId and appointmentId are required in query params" });
+      return res.status(400).json({
+        message:
+          "registrationNumber, patientId and appointmentId are required in request body",
+      });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(patientId) || !mongoose.Types.ObjectId.isValid(appointmentId)) {
-      return res.status(400).json({ message: "Invalid patientId or appointmentId format" });
+    if (
+      !mongoose.Types.ObjectId.isValid(patientId) ||
+      !mongoose.Types.ObjectId.isValid(appointmentId)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Invalid patientId or appointmentId format" });
     }
 
     const appointment = await Appointment.findById(appointmentId);
@@ -69,25 +133,35 @@ exports.createConsultation = async (req, res) => {
     }
 
     if (appointment.status !== "confirmed") {
-      return res.status(400).json({ message: "Consultation can only be created for confirmed appointments" });
+      return res.status(400).json({
+        message: "Consultation can only be created for confirmed appointments",
+      });
     }
 
     // ensure appointment belongs to the patient
     if (appointment.patientId.toString() !== patientId) {
-      return res.status(400).json({ message: "Appointment does not belong to the provided patientId" });
+      return res.status(400).json({
+        message: "Appointment does not belong to the provided patientId",
+      });
     }
 
     // optional: ensure registrationNumber matches appointment (if stored)
-    if (appointment.registrationNumber && appointment.registrationNumber !== registrationNumber) {
-      return res.status(400).json({ message: "registrationNumber does not match appointment's registrationNumber" });
+    if (
+      appointment.registrationNumber &&
+      appointment.registrationNumber !== registrationNumber
+    ) {
+      return res.status(400).json({
+        message:
+          "registrationNumber does not match appointment's registrationNumber",
+      });
     }
 
     const consultation = new Consultation({
       registrationNumber,
       patientId,
       appointmentId,
-      notes: req.query.notes || "",
-      prescription: req.query.prescription || ""
+      notes: notes || "",
+      prescription: prescription || "",
     });
 
     await consultation.save();
@@ -96,10 +170,14 @@ exports.createConsultation = async (req, res) => {
     appointment.status = "completed";
     await appointment.save();
 
-    return res.status(201).json({ message: "Consultation created successfully", consultation });
+    return res
+      .status(201)
+      .json({ message: "Consultation created successfully", consultation });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
@@ -122,9 +200,31 @@ exports.updateConsultation = async (req, res) => {
 
     await consultation.save();
 
-    return res.status(200).json({ message: "Consultation updated successfully", consultation });
+    return res
+      .status(200)
+      .json({ message: "Consultation updated successfully", consultation });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};
+
+exports.getConsultationHistory = async (req, res) => {
+  try {
+    const { registrationNumber } = req.query;
+    if (registrationNumber) {
+      const consultations = await Consultation.find({ registrationNumber })
+        .populate("patientId")
+        .populate("appointmentId")
+        .sort({ createdAt: -1 });
+        return res.status(200).json({ consultations });
+    }
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };

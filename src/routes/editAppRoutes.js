@@ -10,7 +10,7 @@ const validateRequest = require('../middleware/validateRequest');
 router.put('/cancel', controller.cancelAppointment);
 router.put('/update/:appointmentId', controller.updateTimeSlot);
 router.get('/previous', getPreviousAppointments)
-router.get('/previous', getPreviousAppointmentById )
+router.get('/previousConsultation', getPreviousAppointmentById )
 router.get('/upcomingAppointments', getUpcomingAppointments);
  
  
