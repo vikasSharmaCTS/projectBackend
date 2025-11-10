@@ -5,7 +5,7 @@ const consultationSchema = require("../validators/consultationSchema");
  
 // GET routes using query params
 //router.get("/", consultation.getAllAppointments);
-//router.get("/appointment", consultation.getAppointmentsByDoctorOnly); // ?registrationNumber=&appointmentId=
+router.get("/appointment", consultation.getAppointmentsByDoctorOnly); // ?registrationNumber=&appointmentId=
 router.get("/getAppointments", consultation.getAppointmentsByDoctor); // ?registrationNumber=
  
 // POST route using request body
