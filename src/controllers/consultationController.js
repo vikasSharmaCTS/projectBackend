@@ -219,7 +219,15 @@ exports.getConsultationHistory = async (req, res) => {
         .populate("patientId")
         .populate("appointmentId")
         .sort({ createdAt: -1 });
-        return res.status(200).json({ consultations });
+ 
+      const simplifiedConsultations = consultations.map((consultation) => ({
+        patientName: consultation.patientId?.name || "Unknown",
+        date: consultation.appointmentId?.date || null,
+        notes: consultation.notes,
+        prescription: consultation.prescription,
+      }));
+ 
+      return res.status(200).json({ consultations: simplifiedConsultations });
     }
   } catch (error) {
     console.error(error);
