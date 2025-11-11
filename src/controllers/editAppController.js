@@ -1,72 +1,144 @@
-const fs = require('fs');
-const path = require('path');
-const { validationResult } = require('express-validator');
- 
-const filePath = path.join(__dirname, '../data/appointments.json');
-const availabilityPath = path.join(__dirname, '../data/doctors.json');
- 
- 
-exports.cancelAppointment = (req, res) => {
-  const appointments = JSON.parse(fs.readFileSync(filePath));
-  const appointmentId = req.params.appointmentId;
- 
-  const appt = appointments.find(a => a.appointmentId === appointmentId);
- 
-  if (!appt) {
-    return res.status(404).json({ message: 'Appointment not found.' });
+const mongoose = require("mongoose");
+const Appointment = require("../models/appointmentSchema");
+const Doctor = require("../models/doctorsSchema");
+
+exports.cancelAppointment = async (req, res) => {
+  try {
+    const { appointmentId } = req.query;
+
+    if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+      return res.status(400).json({ message: "Invalid appointmentId format" });
+    }
+
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found." });
+    }
+
+    if (appointment.status !== "confirmed") {
+      return res
+        .status(400)
+        .json({ message: "Only confirmed appointments can be cancelled." });
+    }
+
+    let doctor = null;
+    if (appointment.registrationNumber) {
+      doctor = await Doctor.findOne({
+        registrationNumber: appointment.registrationNumber,
+      });
+    }
+    if (!doctor && appointment.doctorId) {
+      doctor = await Doctor.findById(appointment.doctorId);
+    }
+
+    if (doctor) {
+      const calendarEntry = doctor.calendar.find(
+        (entry) =>
+          entry.date.toISOString().split("T")[0] ===
+          appointment.date.toISOString().split("T")[0]
+      );
+
+      if (calendarEntry) {
+        const slot = calendarEntry.availableSlots.find(
+          (slot) =>
+            slot.startTime === appointment.startTime &&
+            slot.endTime === appointment.endTime
+        );
+
+        if (slot) {
+          slot.isBooked = false;
+          await doctor.save();
+        }
+      }
+    }
+
+    appointment.status = "cancelled";
+    await appointment.save();
+
+    res.json({ message: "Appointment cancelled successfully.", appointment });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
- 
-  if (appt.status !== 'confirmed') {
-    return res.status(400).json({ message: 'Only confirmed appointments can be cancelled.' });
+};
+
+exports.updateTimeSlot = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { date, startTime, endTime } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+      return res.status(400).json({ message: "Invalid appointmentId format" });
+    }
+
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    if (appointment.status !== "confirmed") {
+      return res
+        .status(400)
+        .json({ message: `Cannot update ${appointment.status} appointments` });
+    }
+
+    const doctor = await Doctor.findById(appointment.doctorId);
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor availability not found" });
+    }
+
+    const oldEntry = doctor.calendar.find(
+      (entry) =>
+        entry.date.toISOString().split("T")[0] ===
+        appointment.date.toISOString().split("T")[0]
+    );
+    if (oldEntry) {
+      const oldSlot = oldEntry.availableSlots.find(
+        (slot) =>
+          slot.startTime.getTime() === appointment.startTime.getTime() &&
+          slot.endTime.getTime() === appointment.endTime.getTime()
+      );
+      if (oldSlot) oldSlot.isBooked = false;
+    }
+
+    const newEntry = doctor.calendar.find(
+      (entry) =>
+        entry.date.toISOString().split("T")[0] ===
+        new Date(date).toISOString().split("T")[0]
+    );
+    if (!newEntry) {
+      return res
+        .status(400)
+        .json({ message: "No available slots for this date" });
+    }
+
+    const newSlot = newEntry.availableSlots.find(
+      (slot) =>
+        slot.startTime.getTime() === new Date(startTime).getTime() &&
+        slot.endTime.getTime() === new Date(endTime).getTime() &&
+        !slot.isBooked
+    );
+    if (!newSlot) {
+      return res
+        .status(400)
+        .json({ message: "Requested time slot is not available" });
+    }
+
+    newSlot.isBooked = true;
+    await doctor.save();
+
+    appointment.date = new Date(date);
+    appointment.startTime = new Date(startTime);
+    appointment.endTime = new Date(endTime);
+    await appointment.save();
+
+    res.json({ message: "Appointment updated successfully", appointment });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
- 
-  appt.status = 'cancelled';
- 
-  fs.writeFileSync(filePath, JSON.stringify(appointments, null, 2));
-  res.json({ message: 'Appointment cancelled successfully.', appointment: appt });
-}
- 
- 
-exports.updateTimeSlot = (req, res) => {
-  
-  const  appointmentId  = parseInt(req.params.appointmentId);
-  const { date, startTime, endTime } = req.body;
- 
-  const appointments = JSON.parse(fs.readFileSync(filePath));
-  const availability = JSON.parse(fs.readFileSync(availabilityPath));
- 
-  const index = appointments.findIndex(a => a.appointmentId === appointmentId);
-  if (index === -1) {
-    return res.status(404).json({ message: 'Appointment not found' });
-  }
- 
-  const appointment = appointments[index];
-  if (appointment.status !== 'confirmed') {
-    return res.status(400).json({ message: `Cannot update ${appointment.status} appointments` });
-  }
- 
-  const doctor = availability.find(d => d.doctorId === appointment.doctorId);
-  if (!doctor) {
-    return res.status(404).json({ message: 'Doctor availability not found' });
-  }
- 
-  const slotsForDate = doctor.availableSlots[date];
-  if (!slotsForDate || slotsForDate.length === 0) {
-    return res.status(400).json({ message: 'No available slots for this date' });
-  }
- 
-  const isSlotAvailable = slotsForDate.some(slot =>
-    slot.startTime === startTime && slot.endTime === endTime
-  );
- 
-  if (!isSlotAvailable) {
-    return res.status(400).json({ message: 'Requested time slot is not available for this doctor on that date' });
-  }
- 
-  appointment.date = date;
-  appointment.startTime = startTime;
-  appointment.endTime = endTime;
- 
-  fs.writeFileSync(filePath, JSON.stringify(appointments, null, 2));
-  res.json({ message: 'Appointment updated successfully', appointment });
 };

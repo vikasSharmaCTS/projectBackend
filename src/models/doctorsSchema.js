@@ -54,9 +54,9 @@ const doctorSchema = new mongoose.Schema(
         availableSlots: [
           {
             _id: false, // ✅ Disable _id for slots
-            startTime: { type: Date, required: true },
+            startTime: { type: String, required: true },
             endTime: {
-              type: Date,
+              type: String,
               required: true,
               validate: {
                 validator: function (value) {

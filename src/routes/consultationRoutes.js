@@ -2,12 +2,17 @@ const express = require("express");
 const router = express.Router();
 const consultation = require("../controllers/consultationController");
 const consultationSchema = require("../validators/consultationSchema");
+ 
 
-router.get("/", consultation.getAllAppointments);
-router.get("/:doctorId/:appointmentId", consultation.getAppointmentsByDoctorAndAppointmentId);
-router.get("/:doctorId", consultation.getAppointmentsByDoctor);
+router.get("/appointment", consultation.getAppointmentsByDoctorOnly); // ?registrationNumber=&appointmentId=
+router.get("/getAppointments", consultation.getAppointmentsByDoctor); // ?registrationNumber=
+ 
+router.post("/createConsultation", consultationSchema, consultation.createConsultation); // for doctor
+ 
 
-router.post("/:doctorId/:appointmentId/consultation", consultationSchema, consultation.createConsultation);
-router.put("/:doctorId/:appointmentId/consultation", consultation.updateConsultation);
+router.put("/updateConsultation", consultation.updateConsultation);
 
-module.exports = router;
+router.get("/consultationHistory", consultation.getConsultationHistory); // ?patientId=
+//for doctor
+ 
+module.exports = router;    
