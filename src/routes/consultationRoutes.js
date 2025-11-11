@@ -9,11 +9,12 @@ router.get("/appointment", consultation.getAppointmentsByDoctorOnly); // ?regist
 router.get("/getAppointments", consultation.getAppointmentsByDoctor); // ?registrationNumber=
  
 // POST route using request body
-router.post("/createConsultation", consultationSchema, consultation.createConsultation);
+router.post("/createConsultation", consultationSchema, consultation.createConsultation); // for doctor
  
 // PUT route using request body
 router.put("/updateConsultation", consultation.updateConsultation);
 
 router.get("/consultationHistory", consultation.getConsultationHistory); // ?patientId=
+//for doctor
  
 module.exports = router;    

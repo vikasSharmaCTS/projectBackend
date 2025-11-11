@@ -123,7 +123,6 @@ const Doctor = require("../models/doctorsSchema");
 const fs = require("fs");
 const path = require("path");
 
-
 exports.getPreviousAppointments = async (req, res) => {
   try {
     const { patientId } = req.query;
@@ -288,6 +287,7 @@ exports.getUpcomingAppointments = async (req, res) => {
     // Fetch upcoming appointments
     const upcomingAppointments = await Appointment.find({
       patientId: new mongoose.Types.ObjectId(patientId),
+      status: { $ne: "completed" }, // exclude completed appointments
       $or: [
         { date: { $gt: now } }, // future dates
         { date: today, startTime: { $gt: currentTime } }, // same day later time
@@ -296,7 +296,7 @@ exports.getUpcomingAppointments = async (req, res) => {
 
     if (!upcomingAppointments.length) {
       return res
-        .status(404)
+        .status(200)
         .json({ message: "No upcoming appointments found" });
     }
 
@@ -331,8 +331,6 @@ exports.getUpcomingAppointments = async (req, res) => {
   }
 };
 
-
-
 exports.downloadConsultation = async (req, res) => {
   try {
     const { appointmentId } = req.query; // ✅ Using query params for GET
@@ -347,26 +345,29 @@ exports.downloadConsultation = async (req, res) => {
     }
 
     if (!appointment.consultationId) {
-      return res.status(404).json({ message: "No consultation attached to this appointment" });
+      return res
+        .status(404)
+        .json({ message: "No consultation attached to this appointment" });
     }
 
-    const consultation = await Consultation.findById(appointment.consultationId)
-      .select('notes prescription');
+    const consultation = await Consultation.findById(
+      appointment.consultationId
+    ).select("notes prescription");
     if (!consultation) {
       return res.status(404).json({ message: "Consultation record not found" });
     }
 
     const doctor = await Doctor.findOne(
       { registrationNumber: appointment.registrationNumber },
-      'name speciality'
+      "name specialty"
     );
 
     // ✅ Prepare file content
     const fileContent = `
 Consultation Details
 ----------------------
-Doctor Name: ${doctor ? doctor.name : 'N/A'}
-Speciality: ${doctor ? doctor.speciality : 'N/A'}
+Doctor Name: ${doctor ? doctor.name : "N/A"}
+Specialty: ${doctor ? doctor.specialty : "N/A"}
 Appointment Date: ${appointment.date.toDateString()}
 Notes: ${consultation.notes}
 Prescription: ${consultation.prescription}
@@ -383,15 +384,15 @@ Thank you for visiting!
     fs.writeFileSync(filePath, fileContent);
 
     // ✅ Send file for download
-    res.setHeader('Content-Type', 'text/plain');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader("Content-Type", "text/plain");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
     res.download(filePath, fileName, (err) => {
       if (err) {
-        console.error('Error sending file:', err);
-        res.status(500).send('Error downloading file');
+        console.error("Error sending file:", err);
+        res.status(500).send("Error downloading file");
       } else {
-        console.log('File sent for download');
+        console.log("File sent for download");
         // ✅ Clean up after download
         setTimeout(() => {
           if (fs.existsSync(filePath)) {
@@ -401,7 +402,7 @@ Thank you for visiting!
       }
     });
   } catch (error) {
-    console.error('Error generating consultation file:', error);
-    res.status(500).json({ error: 'Failed to generate consultation file' });
+    console.error("Error generating consultation file:", error);
+    res.status(500).json({ error: "Failed to generate consultation file" });
   }
 };
