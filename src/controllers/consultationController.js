@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const Consultation = require("../models/consultationSchema");
 const Appointment = require("../models/appointmentSchema");
-// ensure Patient model is registered so Mongoose populate('patientId') works
 require("../models/patientSchema");
 
 exports.getAllAppointments = async (req, res) => {
@@ -53,7 +52,6 @@ exports.getAppointmentsByDoctor = async (req, res) => {
         .json({ message: "registrationNumber is required" });
     }
 
-    // Only fetch confirmed appointments for the doctor and populate patient basic info
     const appointments = await Appointment.find({
       registrationNumber,
       status: "confirmed",
