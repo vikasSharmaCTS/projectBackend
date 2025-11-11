@@ -21,7 +21,6 @@ const {
 
 router.get("/getDoctors", getFilteredDoctors);
 
-// router.put('/:id', validateUpdateDoctor, updateDoctor);
 router.put(
   "/timeSlots",
   authorize(["Doctor"]),
@@ -30,7 +29,6 @@ router.put(
   timeSlots
 );
 router.put("/editSlots", authorize(["Doctor"]), editSlots);
-// router.put('/deleteSlot/:doctorId',deleteSlotSchema,validateRequest, deleteTimeSlot);
 router.put("/deleteSlot", authorize(["Doctor"]), deleteTimeSlot);
 router.get("/getSlots", getTimeSlot);
 

@@ -1,14 +1,12 @@
 const Doctor = require("../models/doctorsSchema");
 const { validationResult } = require("express-validator");
 
-// GET /doctors?specialty=Cardiology&id=123
 const getFilteredDoctors = async (req, res) => {
   try {
     const { specialty, registrationNumber } = req.query;
 
     let query = {};
 
-    // Build query dynamically
     if (specialty) {
       query.specialty = specialty;
     }
@@ -16,7 +14,6 @@ const getFilteredDoctors = async (req, res) => {
       query.registrationNumber = registrationNumber;
     }
 
-    // If neither is provided → return all doctors
     const doctors = await Doctor.find(Object.keys(query).length ? query : {});
 
     if (!doctors || doctors.length === 0) {
@@ -31,7 +28,6 @@ const getFilteredDoctors = async (req, res) => {
   }
 };
 
-// PUT /doctors/:id
 const updateDoctor = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
@@ -66,16 +62,13 @@ const timeSlots = async (req, res) => {
 
     for (const entry of calendar) {
       const { date, availableSlots } = entry;
-      const dateObj = new Date(date); // Convert to Date for Mongo
+      const dateObj = new Date(date); 
 
-      // Fetch doctor
       const doctor = await Doctor.findOne({ registrationNumber });
 
-      // Find calendar entry by comparing timestamps
       let calendarEntry = doctor?.calendar.find(c => c.date.getTime() === dateObj.getTime());
       let existingSlots = calendarEntry ? calendarEntry.availableSlots : [];
 
-      // Deduplicate incoming slots
       const uniqueSlots = [];
       const seen = new Set();
       for (const slot of availableSlots) {
@@ -89,13 +82,11 @@ const timeSlots = async (req, res) => {
       for (const slot of uniqueSlots) {
         const { startTime, endTime } = slot;
 
-        // Validate startTime < endTime
         if (startTime >= endTime) {
           rejectedSlots.push({ date, startTime, endTime, reason: "Invalid slot: startTime must be less than endTime" });
           continue;
         }
 
-        // Check overlap
         const isOverlapping = existingSlots.some(existing => (
           startTime < existing.endTime && endTime > existing.startTime
         ));
@@ -105,9 +96,7 @@ const timeSlots = async (req, res) => {
           continue;
         }
 
-        // Insert slot
         if (!calendarEntry) {
-          // If date doesn't exist, create it
           await Doctor.updateOne(
             { registrationNumber },
             {
@@ -119,11 +108,9 @@ const timeSlots = async (req, res) => {
               },
             }
           );
-          // Update local reference
           calendarEntry = { date: dateObj, availableSlots: [slot] };
           existingSlots = calendarEntry.availableSlots;
         } else {
-          // Add slot without duplicates
           await Doctor.updateOne(
             { registrationNumber, "calendar.date": dateObj },
             {

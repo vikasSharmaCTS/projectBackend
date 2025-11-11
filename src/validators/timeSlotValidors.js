@@ -1,10 +1,10 @@
 const { checkSchema } = require("express-validator");
 
-// Regex for date (YYYY-MM-DD) and time (HH:MM)
-const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/; // Matches 00:00 to 23:59
 
-// ✅ Helper Functions
+const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/; 
+
+
 function isValidISODate(date) {
   return isoDateRegex.test(date);
 }
@@ -25,7 +25,6 @@ function isStartBeforeEnd(date, startTime, endTime) {
   return start < end;
 }
 
-// ✅ Create Slot Schema
 
 const createSlotSchema = checkSchema({
   calendar: {
@@ -78,7 +77,7 @@ const createSlotSchema = checkSchema({
   },
 });
 
-// ✅ Delete Slot Schema
+
 const deleteSlotSchema = checkSchema({
   date: {
     in: ["body"],
