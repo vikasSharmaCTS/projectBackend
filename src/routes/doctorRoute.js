@@ -13,7 +13,7 @@ const {
 } = require("../controllers/docController");
 const validateRequest = require("../middleware/validateRequest");
 
-const validateUpdateDoctor = require("../validators/doctorValidator");
+// const validateUpdateDoctor = require("../validators/doctorValidator");
 const {
   deleteSlotSchema,
   createSlotSchema,
@@ -30,6 +30,6 @@ router.put(
 );
 router.put("/editSlots", authorize(["Doctor"]), editSlots);
 router.put("/deleteSlot", authorize(["Doctor"]), deleteTimeSlot);
-router.get("/getSlots", getTimeSlot);
+router.get("/getSlots",authorize(["Doctor"]), getTimeSlot);
 
 module.exports = router;
