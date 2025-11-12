@@ -2,7 +2,7 @@ const Doctor = require("../models/doctorsSchema");
 const { validationResult } = require("express-validator");
 
 // GET /doctors?specialty=Cardiology&id=123
-const getFilteredDoctors = async (req, res) => {
+const getFilteredDoctors = async (req, res, next) => {
   try {
     const { specialty, registrationNumber } = req.query;
 
@@ -24,15 +24,15 @@ const getFilteredDoctors = async (req, res) => {
     }
 
     res.json(doctors);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+  } catch (err) {
+    console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
 
 // PUT /doctors/:id
-const updateDoctor = async (req, res) => {
+const updateDoctor = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
     return res.status(400).json({ errors: errors.array() });
@@ -53,7 +53,7 @@ const updateDoctor = async (req, res) => {
   }
 };
 
-const timeSlots = async (req, res) => {
+const timeSlots = async (req, res, next) => {
   try {
     const registrationNumber = req.query.registrationNumber;
     const { calendar } = req.body;
@@ -136,13 +136,14 @@ const timeSlots = async (req, res) => {
     }
 
     return res.status(200).json({ message: "Slots processed successfully", rejectedSlots });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal Server Error" });
+  } catch (err) {
+    console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
 
-const editSlots = async (req, res) => {
+const editSlots = async (req, res, next) => {
   try {
     const { registrationNumber } = req.query;
     const { previousSlot, newSlot } = req.body;
@@ -216,13 +217,14 @@ const editSlots = async (req, res) => {
     }
 
     return res.status(200).json({ message: "Slot updated successfully" });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal Server Error" });
+  } catch (err) {
+     console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
 
-const deleteTimeSlot = async (req, res) => {
+const deleteTimeSlot = async (req, res, next) => {
   try {
     const { registrationNumber } = req.query;
     const { date, startTime, endTime } = req.body;
@@ -247,42 +249,16 @@ const deleteTimeSlot = async (req, res) => {
     }
 
     return res.status(200).json({ message: "Slot deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal Server Error" });
+  } catch (err) {
+     console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
 
-//   try {
-//     const doctorId = req.params.doctorId;
-
-//     // Find doctor by ID
-//     const doctor = await Doctor.findById(doctorId).select("calendar name specialty");
-//     if (!doctor) {
-//       return res.status(404).json({ message: "Doctor not found" });
-//     }
-
-//     // Flatten all available slots into a single array
-//     const slots = doctor.calendar.flatMap(entry =>
-//       entry.availableSlots.map(slot => ({
-//         date: entry.date,
-//         startTime: slot.startTime,
-//         endTime: slot.endTime,
-//         isBooked: slot.isBooked
-//       }))
-//     );
-
-//     return res.status(200).json({
-//       slots
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({ message: "Internal Server Error" });
-//   }
-// };
-const getTimeSlot = async (req, res) => {
+const getTimeSlot = async (req, res, next) => {
   try {
-    const { registrationNumber } = req.query; // ✅ Get registrationNumber from query params
+    const { registrationNumber } = req.query; 
 
     if (!registrationNumber) {
       return res
@@ -309,9 +285,10 @@ const getTimeSlot = async (req, res) => {
     );
 
     return res.status(200).json({ slots });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal Server Error" });
+  } catch (err) {
+ console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
 

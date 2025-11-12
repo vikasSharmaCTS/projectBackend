@@ -3,7 +3,8 @@ const router = express.Router();
 const { bookAppointment } = require('../controllers/appointmentController');
 const bookingSchema = require('../validators/bookingSchema');
 const { validationResult } = require('express-validator');
+const { authenticate } = require('../middleware/authenticate')
 
-router.post('/bookAppointment', bookingSchema, bookAppointment);
+router.post('/bookAppointment',authenticate, bookingSchema, bookAppointment);
 
 module.exports = router;

@@ -33,11 +33,7 @@ async function authenticate(req, res, next) {
   const token = authHeader.split(" ")[1];
 const decoded = jwt.verify(token, process.env.JWT_SECRET || "hospital_secret_key");
 
-// if (!decoded.jti) {
-//   return res.status(401).json({ message: "Invalid token: missing jti" });
-// }
 
-// ❌ Blacklist check: reject if jti is found
 const tokenDoc = await TokenJti.findOne({ jti: decoded.jti });
 if (tokenDoc) {
   return res.status(401).json({ message: "Unauthorized: Token has been revoked" });
@@ -45,9 +41,7 @@ if (tokenDoc) {
 
 req.user = decoded;
 next();
-  // } catch (err) {
-  //   return res.status(401).json({ message: "Unauthorized: Invalid token" });
-  // }
+  
 }
 
 module.exports = { authenticate };

@@ -86,12 +86,7 @@ exports.login = async (req, res) => {
     const match = await bcrypt.compare(password, credentials.password);
     if (!match) return res.status(400).json({ message: "Invalid email or password" });
 
-    // const jti = uuidv4();
-    // const token = jwt.sign(
-    //   { id: credentials.user._id, role: credentials.role, jti },
-    //   process.env.JWT_SECRET || "hospital_secret_key",
-    //   { expiresIn: "1d" }
-    // );
+  
 
     const jti = uuidv4();
 const token = jwt.sign(
@@ -103,9 +98,6 @@ const token = jwt.sign(
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 1);
-
-    // const tokenDoc = await TokenJti.create({ jti, expiresAt });
-    // console.log("Stored token:", tokenDoc);
 
     res.json({
       message: `${credentials.role} Login Successful`,
