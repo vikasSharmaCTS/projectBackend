@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const Doctor = require("../models/doctorsSchema");
 const Credentials = require("../models/credentials");
 
-exports.addDoctor = async (req, res) => {
+exports.addDoctor = async (req, res, next) => {
   try {
     const { name, email, password, registrationNumber, specialty, registrationValidUpto } = req.body;
 
@@ -28,7 +28,9 @@ exports.addDoctor = async (req, res) => {
 
     res.json({ message: "Doctor Added Successfully", doctor });
 
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
