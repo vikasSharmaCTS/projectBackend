@@ -15,7 +15,6 @@ exports.getPreviousAppointments = async (req, res, next) => {
 
     const previousAppointments = await Appointment.find({
       patientId: new mongoose.Types.ObjectId(patientId),
-      //date: { $lt: new Date() },
       status: { $ne: "confirmed" },
     }).sort({ date: -1 });
 
@@ -94,22 +93,21 @@ exports.getUpcomingAppointments = async (req, res, next) => {
   try {
     const { patientId } = req.query;
 
-    // Validate patientId format
     if (!mongoose.Types.ObjectId.isValid(patientId)) {
       return res.status(400).json({ message: "Invalid patientId format" });
     }
 
     const now = new Date();
-    const today = now.toISOString().split("T")[0]; // 'YYYY-MM-DD'
-    const currentTime = now.toTimeString().slice(0, 5); // 'HH:mm'
+    const today = now.toISOString().split("T")[0]; 
+    const currentTime = now.toTimeString().slice(0, 5); 
 
-    // Fetch upcoming appointments
+    
     const upcomingAppointments = await Appointment.find({
       patientId: new mongoose.Types.ObjectId(patientId),
-      status: { $ne: "completed" }, // exclude completed appointments
+      status: { $ne: "completed" }, 
       $or: [
         { date: { $gt: now } }, // future dates
-        { date: today, startTime: { $gt: currentTime } }, // same day later time
+        { date: today, startTime: { $gt: currentTime } }, 
       ],
     }).sort({ date: 1, startTime: 1 });
 
@@ -150,7 +148,7 @@ exports.getUpcomingAppointments = async (req, res, next) => {
 
 exports.downloadConsultation = async (req, res, next) => {
   try {
-    const { appointmentId } = req.query; // ✅ Using query params for GET
+    const { appointmentId } = req.query; 
 
     if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
       return res.status(400).json({ message: "Invalid appointmentId format" });
@@ -179,7 +177,6 @@ exports.downloadConsultation = async (req, res, next) => {
       "name specialty"
     );
 
-    // ✅ Prepare file content
     const fileContent = `
 Consultation Details
 ----------------------
@@ -192,15 +189,12 @@ Prescription: ${consultation.prescription}
 Thank you for visiting!
 `;
 
-    // ✅ Create unique filename
     const timestamp = Date.now();
     const fileName = `consultation_${timestamp}.txt`;
     const filePath = path.join(__dirname, fileName);
 
-    // ✅ Write file
     fs.writeFileSync(filePath, fileContent);
 
-    // ✅ Send file for download
     res.setHeader("Content-Type", "text/plain");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
@@ -210,7 +204,6 @@ Thank you for visiting!
         res.status(500).send("Error downloading file");
       } else {
         console.log("File sent for download");
-        // ✅ Clean up after download
         setTimeout(() => {
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);

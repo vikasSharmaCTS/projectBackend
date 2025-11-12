@@ -18,7 +18,7 @@ exports.verifyToken = async (req, res, next) => {
     if (!stored) return res.status(401).json({ message: 'Token revoked or jti not found' });
 
     if (stored.expiresAt && stored.expiresAt < new Date()) {
-      await TokenJti.findOneAndDelete({ jti: verified.jti }); // cleanup expired jti
+      await TokenJti.findOneAndDelete({ jti: verified.jti }); 
       return res.status(401).json({ message: 'Token expired' });
     }
 
