@@ -286,35 +286,31 @@ const deleteTimeSlot = async (req, res, next) => {
 
 const getTimeSlot = async (req, res, next) => {
   try {
-    const { registrationNumber } = req.query; 
+    const { registrationNumber } = req.query;
 
     if (!registrationNumber) {
-      return res
-        .status(400)
-        .json({ message: "registrationNumber is required" });
+      return res.status(400).json({ message: "registrationNumber is required" });
     }
 
-    // Find doctor by registrationNumber
-    const doctor = await Doctor.findOne({ registrationNumber }).select(
-      "calendar name specialty"
+    const doctor = await Doctor.findOne({ registrationNumber }).select("calendar");
+
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    // Flatten calendar into array of slot objects
+    const slots = doctor.calendar.flatMap(entry =>
+      entry.availableSlots.map(slot => ({
+        date: entry.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        isBooked: slot.isBooked
+      }))
     );
 
-    // Step 3: Remove the date if no slots remain
-    await Doctor.updateOne(
-      { registrationNumber },
-      {
-        $pull: {
-          calendar: {
-            date: targetDate,
-            availableSlots: { $size: 0 }, // Remove if slots array is empty
-          },
-        },
-      }
-    );
-
-    return res.status(200).json({ slots });
+    return res.status(200).json(slots); // ✅ Array of objects
   } catch (err) {
- console.error(err);
+    console.error(err);
     err.statusCode = err.statusCode || 500;
     next(err);
   }
