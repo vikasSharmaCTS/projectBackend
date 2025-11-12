@@ -41,7 +41,7 @@ const bookAppointment = async (req, res) => {
       date: new Date(date),
       startTime,
       endTime,
-      status: { $ne: 'canceled' }
+      status: { $ne: 'cancelled' }
     });
     if (existingAppointment) return res.status(400).json({ message: 'Patient already has an appointment at this time' });
 
@@ -50,7 +50,7 @@ const bookAppointment = async (req, res) => {
       date: new Date(date),
       startTime,
       endTime,
-      status: { $ne: 'canceled' }
+      status: { $ne: 'cancelled' }
     });
     if (slotTaken) return res.status(400).json({ message: 'Requested slot is already booked' });
 

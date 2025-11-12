@@ -30,27 +30,7 @@ const getFilteredDoctors = async (req, res, next) => {
   }
 };
 
-// PUT /doctors/:id
-const updateDoctor = async (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty())
-    return res.status(400).json({ errors: errors.array() });
 
-  try {
-    const doctor = await Doctor.findById(req.params.id);
-    if (!doctor) return res.status(404).json({ message: "Doctor not found" });
-
-    const { name, specialty } = req.body;
-    if (name) doctor.name = name;
-    if (specialty) doctor.specialty = specialty;
-
-    await doctor.save();
-    res.json({ message: "Doctor updated successfully", doctor });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to update doctor" });
-  }
-};
 
 const timeSlots = async (req, res, next) => {
   try {
@@ -298,7 +278,6 @@ const getTimeSlot = async (req, res, next) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    // Flatten calendar into array of slot objects
     const slots = doctor.calendar.flatMap(entry =>
       entry.availableSlots.map(slot => ({
         date: entry.date,
@@ -308,7 +287,7 @@ const getTimeSlot = async (req, res, next) => {
       }))
     );
 
-    return res.status(200).json(slots); // ✅ Array of objects
+    return res.status(200).json(slots); 
   } catch (err) {
     console.error(err);
     err.statusCode = err.statusCode || 500;
@@ -318,7 +297,6 @@ const getTimeSlot = async (req, res, next) => {
 
 module.exports = {
   getFilteredDoctors,
-  updateDoctor,
   timeSlots,
   deleteTimeSlot,
   getTimeSlot,
