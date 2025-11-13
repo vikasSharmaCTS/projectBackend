@@ -3,21 +3,21 @@ const Consultation = require("../models/consultationSchema");
 const Appointment = require("../models/appointmentSchema");
 require("../models/patientSchema");
 
-exports.getAllAppointments = async (req, res) => {
+exports.getAllAppointments = async (req, res, next) => {
   try {
     const consultations = await Consultation.find()
       .populate("patientId")
       .populate("appointmentId");
     return res.status(200).json({ consultations });
-  } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+  } catch (err) {
+    console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
+      //.json({ message: "Server error", error: error.message });
   }
 };
 
-exports.getAppointmentsByDoctorAndAppointmentId = async (req, res) => {
+exports.getAppointmentsByDoctorAndAppointmentId = async (req, res, next) => {
   try {
     const { registrationNumber, appointmentId } = req.query;
     if (!registrationNumber || !appointmentId) {
@@ -34,15 +34,15 @@ exports.getAppointmentsByDoctorAndAppointmentId = async (req, res) => {
       .populate("appointmentId");
 
     return res.status(200).json({ consultations });
-  } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+  } catch (err) {
+    // console.error(error);
+    console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
 
-exports.getAppointmentsByDoctor = async (req, res) => {
+exports.getAppointmentsByDoctor = async (req, res, next) => {
   try {
     const registrationNumber =
       req.params.registrationNumber || req.query.registrationNumber;
@@ -69,15 +69,14 @@ exports.getAppointmentsByDoctor = async (req, res) => {
     }));
 
     return res.status(200).json(filteredAppointments);
-  } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+  } catch (err) {
+   console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
 
-exports.getAppointmentsByDoctorOnly = async (req, res) => {
+exports.getAppointmentsByDoctorOnly = async (req, res, next) => {
   try {
     const { registrationNumber } = req.query;
     if (!registrationNumber) {
@@ -91,15 +90,14 @@ exports.getAppointmentsByDoctorOnly = async (req, res) => {
       .populate("consultationId");
 
     return res.status(200).json({ appointments });
-  } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+  } catch (err) {
+    console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
 
-exports.createConsultation = async (req, res) => {
+exports.createConsultation = async (req, res, next) => {
   try {
     const {
       registrationNumber,
@@ -171,15 +169,14 @@ exports.createConsultation = async (req, res) => {
     return res
       .status(201)
       .json({ message: "Consultation created successfully", consultation });
-  } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+  } catch (err) {
+    console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
 
-exports.updateConsultation = async (req, res) => {
+exports.updateConsultation = async (req, res, next) => {
   try {
     const { consultationId, notes, prescription } = req.body;
 
@@ -201,15 +198,14 @@ exports.updateConsultation = async (req, res) => {
     return res
       .status(200)
       .json({ message: "Consultation updated successfully", consultation });
-  } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+  } catch (err) {
+    console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
 
-exports.getConsultationHistory = async (req, res) => {
+exports.getConsultationHistory = async (req, res, next) => {
   try {
     const { registrationNumber } = req.query;
     if (registrationNumber) {
@@ -227,10 +223,9 @@ exports.getConsultationHistory = async (req, res) => {
  
       return res.status(200).json({ consultations: simplifiedConsultations });
     }
-  } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+  } catch (err) {
+    console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };

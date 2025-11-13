@@ -18,7 +18,7 @@ if (tokenDoc) {
 
 req.user = decoded;
 next();
-
+  
 }
 
 module.exports = { authenticate };

@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Appointment = require("../models/appointmentSchema");
 const Doctor = require("../models/doctorsSchema");
 
-exports.cancelAppointment = async (req, res) => {
+exports.cancelAppointment = async (req, res, next) => {
   try {
     const { appointmentId } = req.query;
 
@@ -56,15 +56,14 @@ exports.cancelAppointment = async (req, res) => {
     await appointment.save();
 
     res.json({ message: "Appointment cancelled successfully.", appointment });
-  } catch (error) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+  } catch (err) {
+     console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
 
-exports.updateTimeSlot = async (req, res) => {
+exports.updateTimeSlot = async (req, res, next) => {
   try {
     const { appointmentId } = req.params;
     const { date, startTime, endTime } = req.body;
@@ -135,10 +134,9 @@ exports.updateTimeSlot = async (req, res) => {
     await appointment.save();
 
     res.json({ message: "Appointment updated successfully", appointment });
-  } catch (error) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+  } catch (err) {
+     console.error(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
 };
